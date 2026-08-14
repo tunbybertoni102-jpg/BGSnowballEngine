@@ -13,13 +13,11 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
 
     - name: Build Plugin
-      run: dotnet build BGSnowballEngine.csproj -c Release
+      run: msbuild BGSnowballEngine.csproj -p:Configuration=Release
 
     - name: Upload Plugin Artifact
       uses: actions/upload-artifact@v4
