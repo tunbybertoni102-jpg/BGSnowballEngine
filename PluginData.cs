@@ -1,8 +1,10 @@
 using System;
+using System.Linq;
 using System.Windows.Controls;
 using Hearthstone_Deck_Tracker.API;
 using Hearthstone_Deck_Tracker.Plugins;
 using Hearthstone_Deck_Tracker.Enums;
+using Hearthstone_Deck_Tracker.Hearthstone;
 
 namespace BGSnowballEngine
 {
@@ -25,7 +27,9 @@ namespace BGSnowballEngine
             _engine.Initialize();
 
             _overlay = new OverlayUI();
-            GameEvents.OnTurnStart.Add(AnalyzeAndDraw);
+            
+            // Передаем правильный делегат с аргументом ActivePlayer
+            GameEvents.OnTurnStart.Add(player => AnalyzeAndDraw());
         }
 
         public void OnUnload()
@@ -43,14 +47,18 @@ namespace BGSnowballEngine
         {
             if (Core.Game == null || Core.Game.Player == null) return;
 
-            var board = Core.Game.Player.Board;
-            var tavern = (Core.Game.CurrentGameStats != null && Core.Game.CurrentGameStats.GameMode == GameMode.Battlegrounds && Core.Game.Opponent != null) 
-                         ? Core.Game.Opponent.Board 
-                         : null; 
+            var playerEntities = Core.Game.Player.Board;
+            var tavernEntities = (Core.Game.CurrentGameStats != null && Core.Game.CurrentGameStats.GameMode == GameMode.Battlegrounds && Core.Game.Opponent != null) 
+                                 ? Core.Game.Opponent.Board 
+                                 : null; 
 
-            if (board != null && tavern != null && _engine != null && _overlay != null)
+            if (playerEntities != null && tavernEntities != null && _engine != null && _overlay != null)
             {
-                var scored = _engine.EvaluateTavern(tavern, board);
+                // Конвертируем Entity в объекты Card
+                var boardCards = playerEntities.Select(e => e.Card).Where(c => c != null).ToList();
+                var tavernCards = tavernEntities.Select(e => e.Card).Where(c => c != null).ToList();
+
+                var scored = _engine.EvaluateTavern(tavernCards, boardCards);
                 _overlay.UpdateHighlights(scored);
             }
         }
