@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
-using HearthstoneDeckTracker.API;
-using HearthstoneDeckTracker.Enums;
-using HearthstoneDeckTracker.Hearthstone;
+using Hearthstone_Deck_Tracker.API;
+using Hearthstone_Deck_Tracker.Enums;
+using Hearthstone_Deck_Tracker.Hearthstone;
 
 namespace BGSnowballEngine
 {
@@ -45,10 +45,10 @@ namespace BGSnowballEngine
             }
         }
 
-        public Dictionary<Card, double> EvaluateTavern(List<Card> tavernCards, List<Card> playerBoard)
+        public Dictionary<Card, double> EvaluateTavern(IEnumerable<Card> tavernCards, IEnumerable<Card> playerBoard)
         {
             var scoredCards = new Dictionary<Card, double>();
-            if (_matrix == null || _matrix.Cards == null) return scoredCards;
+            if (_matrix == null || _matrix.Cards == null || tavernCards == null || playerBoard == null) return scoredCards;
             
             var activeTags = new HashSet<string>();
             foreach (var boardCard in playerBoard)
