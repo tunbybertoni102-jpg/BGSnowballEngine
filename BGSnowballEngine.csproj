@@ -5,11 +5,18 @@
     <LangVersion>latest</LangVersion>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputPath>bin\Release\</OutputPath>
+    <!-- Эта магическая строка заставляет компилятор сканировать папку lib на наличие ВСЕХ зависимостей -->
+    <AssemblySearchPaths>$(MSBuildProjectDirectory)\lib;$(AssemblySearchPaths)</AssemblySearchPaths>
   </PropertyGroup>
 
   <ItemGroup>
     <Reference Include="HearthstoneDeckTracker">
       <HintPath>lib\HearthstoneDeckTracker.exe</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <!-- Явно указываем базу данных карт, без нее класс Card не читается -->
+    <Reference Include="HearthDb">
+      <HintPath>lib\HearthDb.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json">
