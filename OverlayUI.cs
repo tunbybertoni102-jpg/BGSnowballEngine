@@ -5,8 +5,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using HearthstoneDeckTracker.API;
-using HearthstoneDeckTracker.Hearthstone;
+using Hearthstone_Deck_Tracker.API;
+using Hearthstone_Deck_Tracker.Hearthstone;
 
 namespace BGSnowballEngine
 {
@@ -23,7 +23,7 @@ namespace BGSnowballEngine
         public void UpdateHighlights(Dictionary<Card, double> scoredCards)
         {
             ClearOverlay();
-            if (scoredCards.Count == 0) return;
+            if (scoredCards == null || scoredCards.Count == 0) return;
 
             var bestCardEntry = scoredCards.OrderByDescending(x => x.Value).FirstOrDefault();
             if (bestCardEntry.Value < 15.0) return;
@@ -46,15 +46,21 @@ namespace BGSnowballEngine
             Canvas.SetLeft(highlight, SystemParameters.PrimaryScreenWidth / 2 - 75);
             Canvas.SetTop(highlight, SystemParameters.PrimaryScreenHeight / 2 - 100);
 
-            _canvas.Children.Add(highlight);
-            _highlights.Add(highlight);
+            if (_canvas != null)
+            {
+                _canvas.Children.Add(highlight);
+                _highlights.Add(highlight);
+            }
         }
 
         public void ClearOverlay()
         {
-            foreach (var rect in _highlights)
+            if (_canvas != null)
             {
-                _canvas.Children.Remove(rect);
+                foreach (var rect in _highlights)
+                {
+                    _canvas.Children.Remove(rect);
+                }
             }
             _highlights.Clear();
         }
