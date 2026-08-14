@@ -1,0 +1,14 @@
+{
+  "GameVersion": "36.2",
+  "MetaConfig": { "BaseMultiplier": 1.0 },
+  "Cards": [
+    {
+      "Id": "BG_Felboar_001",
+      "Name": "Скверносвин",
+      "BaseWeight": 12.0,
+      "ProvidedTags": ["TavernConsumer"],
+      "RequiredTags": ["GivesTavernBuff"],
+      "SynergyMultipliers": { "GivesTavernBuff": 4.5 }
+    }
+  ]
+}
