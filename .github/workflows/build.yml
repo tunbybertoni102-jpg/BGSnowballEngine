@@ -16,8 +16,8 @@ jobs:
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
 
-    - name: Build Plugin
-      run: msbuild BGSnowballEngine.csproj -p:Configuration=Release
+    - name: Restore and Build Plugin
+      run: msbuild BGSnowballEngine.csproj -restore -p:Configuration=Release
 
     - name: Upload Plugin Artifact
       uses: actions/upload-artifact@v4
