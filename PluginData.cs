@@ -1,7 +1,8 @@
 using System;
 using System.Windows.Controls;
-using HearthstoneDeckTracker.API;
-using HearthstoneDeckTracker.Plugins;
+using Hearthstone_Deck_Tracker.API;
+using Hearthstone_Deck_Tracker.Plugins;
+using Hearthstone_Deck_Tracker.Enums;
 
 namespace BGSnowballEngine
 {
@@ -40,12 +41,14 @@ namespace BGSnowballEngine
 
         private void AnalyzeAndDraw()
         {
+            if (Core.Game == null || Core.Game.Player == null) return;
+
             var board = Core.Game.Player.Board;
-            var tavern = (Core.Game.CurrentGameStats != null && Core.Game.CurrentGameStats.GameMode == HearthstoneDeckTracker.Enums.GameMode.Battlegrounds) 
+            var tavern = (Core.Game.CurrentGameStats != null && Core.Game.CurrentGameStats.GameMode == GameMode.Battlegrounds && Core.Game.Opponent != null) 
                          ? Core.Game.Opponent.Board 
                          : null; 
 
-            if (board != null && tavern != null)
+            if (board != null && tavern != null && _engine != null && _overlay != null)
             {
                 var scored = _engine.EvaluateTavern(tavern, board);
                 _overlay.UpdateHighlights(scored);
