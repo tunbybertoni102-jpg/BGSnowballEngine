@@ -23,7 +23,9 @@ jobs:
         $asset = $release.assets | Where-Object { $_.name -match "Hearthstone\.Deck\.Tracker-.*\.zip" } | Select-Object -First 1
         Write-Host "Downloading HDT from $($asset.browser_download_url)"
         Invoke-WebRequest -Uri $asset.browser_download_url -OutFile "hdt.zip"
-        Expand-Archive -Path "hdt.zip" -DestinationPath "lib" -Force
+        Expand-Archive -Path "hdt.zip" -DestinationPath "temp_hdt" -Force
+        New-Item -ItemType Directory -Force -Path "lib"
+        Move-Item -Path "temp_hdt\Hearthstone Deck Tracker\*" -Destination "lib\" -Force
 
     - name: Restore and Build Plugin
       run: msbuild BGSnowballEngine.csproj -restore -p:Configuration=Release
