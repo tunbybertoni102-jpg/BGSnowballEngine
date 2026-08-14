@@ -3,24 +3,23 @@
     <TargetFramework>net48</TargetFramework>
     <UseWPF>true</UseWPF>
     <LangVersion>latest</LangVersion>
+    <!-- Принудительно заставляем сервер собирать мод в 64 битах -->
+    <PlatformTarget>x64</PlatformTarget>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <OutputPath>bin\Release\</OutputPath>
-    <!-- Эта магическая строка заставляет компилятор сканировать папку lib на наличие ВСЕХ зависимостей -->
-    <AssemblySearchPaths>$(MSBuildProjectDirectory)\lib;$(AssemblySearchPaths)</AssemblySearchPaths>
+    <OutputPath>bin/Release/</OutputPath>
   </PropertyGroup>
 
   <ItemGroup>
     <Reference Include="HearthstoneDeckTracker">
-      <HintPath>lib\HearthstoneDeckTracker.exe</HintPath>
+      <HintPath>lib/HearthstoneDeckTracker.exe</HintPath>
       <Private>False</Private>
     </Reference>
-    <!-- Явно указываем базу данных карт, без нее класс Card не читается -->
     <Reference Include="HearthDb">
-      <HintPath>lib\HearthDb.dll</HintPath>
+      <HintPath>lib/HearthDb.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json">
-      <HintPath>lib\Newtonsoft.Json.dll</HintPath>
+      <HintPath>lib/Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
