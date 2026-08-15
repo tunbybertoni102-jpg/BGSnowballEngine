@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json;
+using HearthDb;
 using Hearthstone_Deck_Tracker.Hearthstone;
 
 namespace BGSnowballEngine
@@ -28,7 +29,6 @@ namespace BGSnowballEngine
         public string Name { get; set; } = "Поиск направления";
         public string Subtitle { get; set; } = "Ранняя игра / Темп";
         public int SynergyPower { get; set; } = 0;
-        public List<string> CoreTags { get; set; } = new List<string>();
     }
 
     public class EngineCore
@@ -51,6 +51,26 @@ namespace BGSnowballEngine
             catch { }
         }
 
+        public string NormalizeRace(string rawRace)
+        {
+            if (string.IsNullOrEmpty(rawRace)) return "Neutral";
+            string lower = rawRace.ToLower();
+
+            if (lower.Contains("звер") || lower.Contains("beast")) return "Beast";
+            if (lower.Contains("свин") || lower.Contains("quilboar") || lower.Contains("boar")) return "Quilboar";
+            if (lower.Contains("нежит") || lower.Contains("undead")) return "Undead";
+            if (lower.Contains("мех") || lower.Contains("mech")) return "Mech";
+            if (lower.Contains("элем") || lower.Contains("elemental")) return "Elemental";
+            if (lower.Contains("демон") || lower.Contains("demon")) return "Demon";
+            if (lower.Contains("пират") || lower.Contains("pirate")) return "Pirate";
+            if (lower.Contains("дракон") || lower.Contains("dragon")) return "Dragon";
+            if (lower.Contains("наг") || lower.Contains("naga")) return "Naga";
+            if (lower.Contains("мурлок") || lower.Contains("murloc")) return "Murloc";
+            if (lower.Contains("все") || lower.Contains("all")) return "All";
+
+            return rawRace;
+        }
+
         public ArchetypeSummary AnalyzeBuild(IEnumerable<Card> playerBoard)
         {
             var summary = new ArchetypeSummary();
@@ -63,10 +83,11 @@ namespace BGSnowballEngine
             {
                 if (card == null) continue;
 
-                if (!string.IsNullOrEmpty(card.Race) && card.Race != "Invalid")
+                string normRace = NormalizeRace(card.Race);
+                if (normRace != "Neutral" && normRace != "Invalid")
                 {
-                    raceCounts[card.Race] = raceCounts.ContainsKey(card.Race) ? raceCounts[card.Race] + 1 : 1;
-                    activeTags.Add(card.Race);
+                    raceCounts[normRace] = raceCounts.ContainsKey(normRace) ? raceCounts[normRace] + 1 : 1;
+                    activeTags.Add(normRace);
                 }
 
                 var config = FindConfig(card);
@@ -77,40 +98,50 @@ namespace BGSnowballEngine
                 }
             }
 
-            if (raceCounts.Count == 0) return summary;
+            if (raceCounts.Count == 0)
+            {
+                summary.Name = "Темп / Статы";
+                summary.Subtitle = "Сборка без ярко выраженного типа";
+                summary.SynergyPower = 10;
+                return summary;
+            }
 
             var topRace = raceCounts.OrderByDescending(x => x.Value).FirstOrDefault();
             int totalMinions = playerBoard.Count();
 
-            // Распознавание ключевых архетипов
             if (topRace.Value >= 2)
             {
-                summary.Name = TranslateRace(topRace.Key);
-                summary.SynergyPower = Math.Min(100, (int)((topRace.Value / (double)totalMinions) * 100) + (activeTags.Count * 5));
+                summary.Name = TranslateRaceToRu(topRace.Key);
+                summary.SynergyPower = Math.Min(100, (int)((topRace.Value / (double)totalMinions) * 70) + (activeTags.Count * 6));
 
                 if (activeTags.Contains("Token_Beasts") || activeTags.Contains("Deathrattle_Trigger_x2"))
                     summary.Subtitle = "Спам токенов / Хрипы";
                 else if (activeTags.Contains("Gem_Scaling") || activeTags.Contains("BloodGem_Engine"))
-                    summary.Subtitle = "Масштабирование самоцветов";
+                    summary.Subtitle = "Кровавые самоцветы";
                 else if (activeTags.Contains("Magnetic_Echo") || activeTags.Contains("DivineShield_Attacker"))
                     summary.Subtitle = "Магнетизм / Щиты";
                 else if (activeTags.Contains("APM_Cycle"))
                     summary.Subtitle = "Прокрутка таверны (APM)";
                 else if (activeTags.Contains("Self_Damage"))
-                    summary.Subtitle = "Урон по герою (Self-Damage)";
+                    summary.Subtitle = "Урон по герою";
                 else if (activeTags.Contains("Handbuff_Murloc"))
                     summary.Subtitle = "Раскачка руки / Яды";
                 else
-                    summary.Subtitle = "Классический триб";
+                    summary.Subtitle = $"Сборка через {summary.Name}";
             }
             else if (raceCounts.Count >= 3)
             {
                 summary.Name = "Солянка (Menagerie)";
-                summary.Subtitle = "Мульти-трибы / Теотар";
-                summary.SynergyPower = Math.Min(100, raceCounts.Count * 20);
+                summary.Subtitle = "Мульти-трибы / Разные расы";
+                summary.SynergyPower = Math.Min(100, raceCounts.Count * 22);
+            }
+            else
+            {
+                summary.Name = "Ранняя игра";
+                summary.Subtitle = "Покупка сильных существ";
+                summary.SynergyPower = 20;
             }
 
-            summary.CoreTags = activeTags.Take(4).ToList();
             return summary;
         }
 
@@ -124,8 +155,8 @@ namespace BGSnowballEngine
             foreach (var boardCard in playerBoard)
             {
                 if (boardCard == null) continue;
-                if (!string.IsNullOrEmpty(boardCard.Race))
-                    activeTags.Add(boardCard.Race);
+                string r = NormalizeRace(boardCard.Race);
+                if (r != "Neutral") activeTags.Add(r);
 
                 var config = FindConfig(boardCard);
                 if (config?.ProvidedTags != null)
@@ -139,8 +170,9 @@ namespace BGSnowballEngine
             {
                 if (tavernCard == null) continue;
                 double score = 1.0;
-                var config = FindConfig(tavernCard);
+                string tRace = NormalizeRace(tavernCard.Race);
 
+                var config = FindConfig(tavernCard);
                 if (config != null)
                 {
                     score = config.BaseWeight;
@@ -155,9 +187,9 @@ namespace BGSnowballEngine
                         }
                     }
                 }
-                else if (!string.IsNullOrEmpty(tavernCard.Race) && activeTags.Contains(tavernCard.Race))
+                else if (tRace != "Neutral" && (activeTags.Contains(tRace) || tRace == "All"))
                 {
-                    score = 2.5;
+                    score = 3.5;
                 }
 
                 scoredCards[tavernCard] = score;
@@ -169,12 +201,22 @@ namespace BGSnowballEngine
         private CardConfig FindConfig(Card card)
         {
             if (_matrix.Cards == null || card == null) return null;
+
+            string enName = null;
+            if (!string.IsNullOrEmpty(card.Id) && Cards.All.TryGetValue(card.Id, out var dbCard))
+            {
+                enName = dbCard.Name;
+            }
+
             return _matrix.Cards.FirstOrDefault(c => 
                 (!string.IsNullOrEmpty(c.Id) && string.Equals(c.Id, card.Id, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrEmpty(c.Name) && (string.Equals(c.Name, card.Name, StringComparison.OrdinalIgnoreCase) || string.Equals(c.Name, card.EnglishText, StringComparison.OrdinalIgnoreCase))));
+                (!string.IsNullOrEmpty(c.Name) && (
+                    string.Equals(c.Name, card.Name, StringComparison.OrdinalIgnoreCase) ||
+                    (!string.IsNullOrEmpty(enName) && string.Equals(c.Name, enName, StringComparison.OrdinalIgnoreCase))
+                )));
         }
 
-        private string TranslateRace(string race)
+        private string TranslateRaceToRu(string race)
         {
             switch (race.ToLower())
             {
