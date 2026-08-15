@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json;
-using HearthDb;
 using Hearthstone_Deck_Tracker.Hearthstone;
 
 namespace BGSnowballEngine
@@ -203,7 +202,7 @@ namespace BGSnowballEngine
             if (_matrix.Cards == null || card == null) return null;
 
             string enName = null;
-            if (!string.IsNullOrEmpty(card.Id) && Cards.All.TryGetValue(card.Id, out var dbCard))
+            if (!string.IsNullOrEmpty(card.Id) && HearthDb.Cards.All.TryGetValue(card.Id, out var dbCard))
             {
                 enName = dbCard.Name;
             }
