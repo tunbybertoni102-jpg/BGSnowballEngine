@@ -7,13 +7,11 @@ using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using Hearthstone_Deck_Tracker.API;
-using Hearthstone_Deck_Tracker.Hearthstone.Entities;
 
 namespace BGSnowballEngine
 {
-    public class ScoredTavernEntity
+    public class ScoredSlot
     {
-        public Entity Entity { get; set; }
         public int SlotIndex { get; set; }
         public int TotalSlots { get; set; }
         public double Score { get; set; }
@@ -43,9 +41,9 @@ namespace BGSnowballEngine
             {
                 _buildPanel = new Border
                 {
-                    Width = 190,
-                    Background = new SolidColorBrush(Color.FromArgb(215, 14, 18, 24)),
-                    BorderBrush = new SolidColorBrush(Color.FromArgb(200, 212, 175, 55)),
+                    Width = 200,
+                    Background = new SolidColorBrush(Color.FromArgb(225, 12, 16, 22)),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(220, 212, 175, 55)),
                     BorderThickness = new Thickness(1.5),
                     CornerRadius = new CornerRadius(8),
                     Padding = new Thickness(10, 8, 10, 8),
@@ -53,9 +51,9 @@ namespace BGSnowballEngine
                     Effect = new DropShadowEffect
                     {
                         Color = Colors.Black,
-                        BlurRadius = 10,
+                        BlurRadius = 12,
                         ShadowDepth = 2,
-                        Opacity = 0.8
+                        Opacity = 0.85
                     }
                 };
 
@@ -66,13 +64,13 @@ namespace BGSnowballEngine
                     Text = "🎯 ТЕКУЩАЯ СБОРКА",
                     FontSize = 10,
                     FontWeight = FontWeights.Bold,
-                    Foreground = new SolidColorBrush(Color.FromArgb(220, 200, 200, 200)),
+                    Foreground = new SolidColorBrush(Color.FromArgb(200, 200, 200, 200)),
                     Margin = new Thickness(0, 0, 0, 4)
                 };
 
                 _buildTitle = new TextBlock
                 {
-                    Text = "Поиск направления...",
+                    Text = "Анализ стола...",
                     FontSize = 14,
                     FontWeight = FontWeights.ExtraBold,
                     Foreground = Brushes.Gold,
@@ -81,7 +79,7 @@ namespace BGSnowballEngine
 
                 _buildSubtitle = new TextBlock
                 {
-                    Text = "Ранняя игра / Темп",
+                    Text = "Ожидание карт",
                     FontSize = 11,
                     Foreground = Brushes.WhiteSmoke,
                     Margin = new Thickness(0, 2, 0, 6)
@@ -112,7 +110,7 @@ namespace BGSnowballEngine
             double screenW = _canvas.ActualWidth > 0 ? _canvas.ActualWidth : SystemParameters.PrimaryScreenWidth;
             double screenH = _canvas.ActualHeight > 0 ? _canvas.ActualHeight : SystemParameters.PrimaryScreenHeight;
 
-            Canvas.SetLeft(_buildPanel, screenW - 215);
+            Canvas.SetLeft(_buildPanel, screenW - 225);
             Canvas.SetTop(_buildPanel, screenH * 0.22);
         }
 
@@ -126,11 +124,11 @@ namespace BGSnowballEngine
                 _buildTitle.Text = summary.Name;
                 _buildSubtitle.Text = summary.Subtitle;
                 _powerMeter.Text = $"⚡ Синергия: {summary.SynergyPower}%";
-                _powerMeter.Foreground = summary.SynergyPower >= 60 ? Brushes.Gold : Brushes.LimeGreen;
+                _powerMeter.Foreground = summary.SynergyPower >= 50 ? Brushes.Gold : Brushes.LimeGreen;
             });
         }
 
-        public void UpdateTavernHighlights(List<ScoredTavernEntity> items)
+        public void UpdateTavernHighlights(List<ScoredSlot> items)
         {
             if (_canvas == null) return;
 
@@ -140,45 +138,46 @@ namespace BGSnowballEngine
 
                 if (items == null || items.Count == 0) return;
 
-                var bestCandidates = items.Where(x => x.Score >= 5.0).ToList();
-                if (bestCandidates.Count == 0) return;
+                // Подсвечиваем любые совпавшие карты со скором >= 2.0
+                var targets = items.Where(x => x.Score >= 2.0).ToList();
+                if (targets.Count == 0) return;
 
                 double screenW = _canvas.ActualWidth > 0 ? _canvas.ActualWidth : SystemParameters.PrimaryScreenWidth;
                 double screenH = _canvas.ActualHeight > 0 ? _canvas.ActualHeight : SystemParameters.PrimaryScreenHeight;
 
-                // Точные пропорции овальных портретов существ в таверне
                 double cardW = screenW * 0.072;
                 double cardH = screenH * 0.128;
                 double stepX = screenW * 0.0885;
                 double tavernY = screenH * 0.288;
                 double centerX = screenW / 2.0;
 
-                foreach (var item in bestCandidates)
+                foreach (var item in targets)
                 {
                     double offsetFromCenter = (item.SlotIndex - ((item.TotalSlots - 1) / 2.0)) * stepX;
                     double posX = centerX + offsetFromCenter - (cardW / 2.0);
                     double posY = tavernY - (cardH / 2.0);
 
-                    Brush contourBrush = item.Score >= 15.0 ? Brushes.Gold : Brushes.LimeGreen;
-                    Color glowColor = item.Score >= 15.0 ? Color.FromArgb(80, 255, 215, 0) : Color.FromArgb(60, 0, 255, 0);
+                    bool isHighPriority = item.Score >= 5.0;
+                    Brush strokeColor = isHighPriority ? Brushes.Gold : Brushes.LimeGreen;
+                    Color glowFill = isHighPriority ? Color.FromArgb(70, 255, 215, 0) : Color.FromArgb(50, 0, 255, 0);
 
-                    // Овальная рамка строго по внешнему контуру карты
+                    // Овал строго по форме существа в таверне
                     Rectangle contour = new Rectangle
                     {
                         Width = cardW,
                         Height = cardH,
-                        Stroke = contourBrush,
+                        Stroke = strokeColor,
                         StrokeThickness = 3.5,
                         RadiusX = 18,
                         RadiusY = 18,
-                        Fill = new SolidColorBrush(glowColor),
+                        Fill = new SolidColorBrush(glowFill),
                         IsHitTestVisible = false,
                         Effect = new DropShadowEffect
                         {
-                            Color = item.Score >= 15.0 ? Colors.Gold : Colors.LimeGreen,
+                            Color = isHighPriority ? Colors.Gold : Colors.LimeGreen,
                             BlurRadius = 8,
                             ShadowDepth = 0,
-                            Opacity = 0.9
+                            Opacity = 0.85
                         }
                     };
 
@@ -187,7 +186,7 @@ namespace BGSnowballEngine
                     _canvas.Children.Add(contour);
                     _dynamicElements.Add(contour);
 
-                    // Бейдж рейтинга над картой
+                    // Компактный бейдж рейтинга
                     TextBlock badge = new TextBlock
                     {
                         Text = $"★ {item.Score:0.#}",
