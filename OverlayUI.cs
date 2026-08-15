@@ -22,47 +22,55 @@ namespace BGSnowballEngine
 
         public void UpdateHighlights(Dictionary<Card, double> scoredCards)
         {
-            ClearOverlay();
-            if (scoredCards == null || scoredCards.Count == 0) return;
+            if (_canvas == null) return;
 
-            var bestCardEntry = scoredCards.OrderByDescending(x => x.Value).FirstOrDefault();
-            if (bestCardEntry.Value < 15.0) return;
+            // Перенаправляем отрисовку в главный графический поток WPF
+            _canvas.Dispatcher.Invoke(() =>
+            {
+                ClearOverlay();
+                if (scoredCards == null || scoredCards.Count == 0) return;
 
-            Card bestCard = bestCardEntry.Key;
-            DrawRectangleForCard(bestCard);
+                var bestCardEntry = scoredCards.OrderByDescending(x => x.Value).FirstOrDefault();
+                
+                // Снизили порог, чтобы подсветка гарантированно срабатывала при совпадении карты
+                if (bestCardEntry.Value <= 0) return;
+
+                DrawRectangleForCard(bestCardEntry.Key);
+            });
         }
 
         private void DrawRectangleForCard(Card card)
         {
             Rectangle highlight = new Rectangle
             {
-                Width = 150,
-                Height = 200,
+                Width = 160,
+                Height = 220,
                 Stroke = Brushes.LimeGreen,
                 StrokeThickness = 4,
-                Fill = new SolidColorBrush(Color.FromArgb(50, 0, 255, 0))
+                Fill = new SolidColorBrush(Color.FromArgb(60, 0, 255, 0)),
+                IsHitTestVisible = false // Пропускаем клики мыши сквозь рамку
             };
 
-            Canvas.SetLeft(highlight, SystemParameters.PrimaryScreenWidth / 2 - 75);
-            Canvas.SetTop(highlight, SystemParameters.PrimaryScreenHeight / 2 - 100);
+            // Рисуем рамку по центру экрана
+            Canvas.SetLeft(highlight, (SystemParameters.PrimaryScreenWidth / 2) - 80);
+            Canvas.SetTop(highlight, (SystemParameters.PrimaryScreenHeight / 2) - 110);
 
-            if (_canvas != null)
-            {
-                _canvas.Children.Add(highlight);
-                _highlights.Add(highlight);
-            }
+            _canvas.Children.Add(highlight);
+            _highlights.Add(highlight);
         }
 
         public void ClearOverlay()
         {
-            if (_canvas != null)
+            if (_canvas == null) return;
+
+            _canvas.Dispatcher.Invoke(() =>
             {
                 foreach (var rect in _highlights)
                 {
                     _canvas.Children.Remove(rect);
                 }
-            }
-            _highlights.Clear();
+                _highlights.Clear();
+            });
         }
     }
 }
