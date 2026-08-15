@@ -2,31 +2,38 @@
   "Cards": [
     {
       "Name": "Banana Slamma",
-      "BaseWeight": 5.0,
+      "BaseWeight": 5.5,
       "ProvidedTags": ["Beast_Multiplier", "Token_Beasts"],
       "RequiredTags": ["Beast", "Token_Beasts", "Deathrattle"],
       "SynergyMultipliers": { "Beast": 2.5, "Token_Beasts": 4.0, "Deathrattle": 2.0 }
     },
     {
-      "Name": "Buzzing Vermin",
-      "BaseWeight": 2.0,
-      "ProvidedTags": ["Token_Beasts", "Beast_Early"],
-      "RequiredTags": ["Beast_Multiplier"],
-      "SynergyMultipliers": { "Beast_Multiplier": 3.5 }
-    },
-    {
       "Name": "Titus Rivendare",
-      "BaseWeight": 8.0,
+      "BaseWeight": 8.5,
       "ProvidedTags": ["Deathrattle_Trigger_x2"],
-      "RequiredTags": ["Deathrattle", "Token_Beasts", "Undead_Attack"],
-      "SynergyMultipliers": { "Deathrattle": 3.0, "Token_Beasts": 3.5, "Undead_Attack": 3.0 }
+      "RequiredTags": ["Deathrattle", "Token_Beasts", "Undead_Attack", "Bomb_Mech"],
+      "SynergyMultipliers": { "Deathrattle": 3.5, "Token_Beasts": 3.0, "Undead_Attack": 3.0, "Bomb_Mech": 4.0 }
     },
     {
       "Name": "Goldrinn, the Great Wolf",
-      "BaseWeight": 6.0,
+      "BaseWeight": 6.5,
       "ProvidedTags": ["Deathrattle", "Beast_Aura_Buff"],
       "RequiredTags": ["Deathrattle_Trigger_x2", "Beast"],
       "SynergyMultipliers": { "Deathrattle_Trigger_x2": 4.0, "Beast": 2.5 }
+    },
+    {
+      "Name": "Hawkstrider Herald",
+      "BaseWeight": 7.0,
+      "ProvidedTags": ["StartOfCombat_Trigger"],
+      "RequiredTags": ["Deathrattle", "Beast_Aura_Buff", "Undead_Attack"],
+      "SynergyMultipliers": { "Deathrattle": 3.5, "Beast_Aura_Buff": 4.0, "Undead_Attack": 3.0 }
+    },
+    {
+      "Name": "Ghoul-acabra",
+      "BaseWeight": 7.5,
+      "ProvidedTags": ["Deathrattle_Permanent_Buffer"],
+      "RequiredTags": ["Deathrattle", "Reborn", "Token_Beasts"],
+      "SynergyMultipliers": { "Deathrattle": 3.0, "Reborn": 3.5, "Token_Beasts": 3.5 }
     },
     {
       "Name": "Charlga",
@@ -36,130 +43,263 @@
       "SynergyMultipliers": { "Quilboar": 3.0, "Gem_Scaling": 3.5, "EndOfTurn_Multiplier": 3.0 }
     },
     {
+      "Name": "Pokey Thornmantle",
+      "BaseWeight": 8.0,
+      "ProvidedTags": ["Gem_Scaling", "EndOfTurn"],
+      "RequiredTags": ["Quilboar", "EndOfTurn_Multiplier", "BloodGem_Engine"],
+      "SynergyMultipliers": { "Quilboar": 3.5, "EndOfTurn_Multiplier": 4.0, "BloodGem_Engine": 3.0 }
+    },
+    {
       "Name": "Bongo Bopper",
       "BaseWeight": 5.0,
       "ProvidedTags": ["BloodGem_Generator", "EndOfTurn"],
-      "RequiredTags": ["Quilboar", "EndOfTurn_Multiplier"],
-      "SynergyMultipliers": { "Quilboar": 2.5, "EndOfTurn_Multiplier": 3.0 }
+      "RequiredTags": ["Quilboar", "EndOfTurn_Multiplier", "Gem_Scaling"],
+      "SynergyMultipliers": { "Quilboar": 2.5, "EndOfTurn_Multiplier": 3.0, "Gem_Scaling": 2.5 }
+    },
+    {
+      "Name": "Geomagus Roogug",
+      "BaseWeight": 6.0,
+      "ProvidedTags": ["BloodGem_Engine"],
+      "RequiredTags": ["BloodGem_Generator", "BloodGem_Engine", "BloodGem_Transfer"],
+      "SynergyMultipliers": { "BloodGem_Generator": 3.0, "BloodGem_Engine": 3.5, "BloodGem_Transfer": 3.0 }
+    },
+    {
+      "Name": "Bristlebach",
+      "BaseWeight": 7.5,
+      "ProvidedTags": ["BloodGem_Engine"],
+      "RequiredTags": ["Gem_Scaling", "Token_Beasts", "Reborn"],
+      "SynergyMultipliers": { "Gem_Scaling": 4.0, "Token_Beasts": 3.0, "Reborn": 2.5 }
     },
     {
       "Name": "Drakkari Enchanter",
       "BaseWeight": 7.5,
       "ProvidedTags": ["EndOfTurn_Multiplier"],
       "RequiredTags": ["EndOfTurn"],
-      "SynergyMultipliers": { "EndOfTurn": 4.5 }
+      "SynergyMultipliers": { "EndOfTurn": 5.0 }
     },
     {
       "Name": "Sister Deathwhisper",
-      "BaseWeight": 7.0,
+      "BaseWeight": 7.5,
       "ProvidedTags": ["Undead_Scaler"],
       "RequiredTags": ["Reborn", "Undead"],
-      "SynergyMultipliers": { "Reborn": 4.0, "Undead": 2.5 }
+      "SynergyMultipliers": { "Reborn": 4.5, "Undead": 2.5 }
     },
     {
       "Name": "Anub'arak, Nerubian King",
-      "BaseWeight": 5.0,
+      "BaseWeight": 5.5,
       "ProvidedTags": ["Undead_Attack", "Deathrattle"],
       "RequiredTags": ["Deathrattle_Trigger_x2", "Undead", "Reborn"],
-      "SynergyMultipliers": { "Deathrattle_Trigger_x2": 3.0, "Undead": 2.0, "Reborn": 2.5 }
+      "SynergyMultipliers": { "Deathrattle_Trigger_x2": 3.5, "Undead": 2.5, "Reborn": 3.0 }
+    },
+    {
+      "Name": "Archlich Kel'Thuzad",
+      "BaseWeight": 8.0,
+      "ProvidedTags": ["Deathrattle_Recycler", "EndOfTurn"],
+      "RequiredTags": ["Reborn", "Deathrattle", "Undead_Scaler", "EndOfTurn_Multiplier"],
+      "SynergyMultipliers": { "Reborn": 4.0, "Deathrattle": 3.5, "Undead_Scaler": 3.0, "EndOfTurn_Multiplier": 3.0 }
+    },
+    {
+      "Name": "Champion of the Primus",
+      "BaseWeight": 6.5,
+      "ProvidedTags": ["Undead_Scaler"],
+      "RequiredTags": ["Reborn", "Undead_Attack"],
+      "SynergyMultipliers": { "Reborn": 3.5, "Undead_Attack": 3.0 }
     },
     {
       "Name": "Deflect-o-Bot",
-      "BaseWeight": 4.0,
+      "BaseWeight": 4.5,
       "ProvidedTags": ["DivineShield_Attacker"],
-      "RequiredTags": ["Mech_Reset", "Magnetic"],
-      "SynergyMultipliers": { "Mech_Reset": 4.0, "Magnetic": 2.5 }
+      "RequiredTags": ["Mech_Reset", "Magnetic", "Mech"],
+      "SynergyMultipliers": { "Mech_Reset": 4.5, "Magnetic": 2.5, "Mech": 2.0 }
     },
     {
       "Name": "Utility Drone",
       "BaseWeight": 6.0,
       "ProvidedTags": ["Mech_Buffer", "EndOfTurn"],
-      "RequiredTags": ["Magnetic", "EndOfTurn_Multiplier"],
-      "SynergyMultipliers": { "Magnetic": 3.5, "EndOfTurn_Multiplier": 3.0 }
+      "RequiredTags": ["Magnetic", "EndOfTurn_Multiplier", "Mech"],
+      "SynergyMultipliers": { "Magnetic": 4.0, "EndOfTurn_Multiplier": 3.0, "Mech": 2.5 }
     },
     {
       "Name": "Beatboxer",
-      "BaseWeight": 8.0,
+      "BaseWeight": 8.5,
       "ProvidedTags": ["Magnetic_Echo"],
       "RequiredTags": ["Magnetic", "Mech"],
-      "SynergyMultipliers": { "Magnetic": 5.0, "Mech": 2.5 }
+      "SynergyMultipliers": { "Magnetic": 5.5, "Mech": 2.5 }
+    },
+    {
+      "Name": "Kangor's Apprentice",
+      "BaseWeight": 6.0,
+      "ProvidedTags": ["Mech_Reset", "Deathrattle"],
+      "RequiredTags": ["Bomb_Mech", "Deathrattle_Trigger_x2", "Magnetic_Echo"],
+      "SynergyMultipliers": { "Bomb_Mech": 4.0, "Deathrattle_Trigger_x2": 3.5, "Magnetic_Echo": 3.5 }
     },
     {
       "Name": "Rock Rock",
-      "BaseWeight": 7.5,
+      "BaseWeight": 8.0,
       "ProvidedTags": ["Elemental_Engine"],
-      "RequiredTags": ["Elemental_Play", "Elemental"],
-      "SynergyMultipliers": { "Elemental_Play": 4.5, "Elemental": 2.0 }
+      "RequiredTags": ["Elemental_Play", "Elemental", "APM_Cycle"],
+      "SynergyMultipliers": { "Elemental_Play": 4.5, "Elemental": 2.5, "APM_Cycle": 3.5 }
+    },
+    {
+      "Name": "Recycling Wraith",
+      "BaseWeight": 6.0,
+      "ProvidedTags": ["APM_Cycle", "Elemental_Play"],
+      "RequiredTags": ["Elemental_Engine", "Elemental"],
+      "SynergyMultipliers": { "Elemental_Engine": 4.5, "Elemental": 2.5 }
     },
     {
       "Name": "Master of Realities",
       "BaseWeight": 5.0,
       "ProvidedTags": ["Elemental_Consumer"],
-      "RequiredTags": ["Elemental_Engine"],
-      "SynergyMultipliers": { "Elemental_Engine": 4.0 }
+      "RequiredTags": ["Elemental_Engine", "Elemental_Play"],
+      "SynergyMultipliers": { "Elemental_Engine": 4.0, "Elemental_Play": 3.0 }
     },
     {
       "Name": "Famished Felbat",
-      "BaseWeight": 6.5,
+      "BaseWeight": 7.0,
       "ProvidedTags": ["Tavern_Consume", "EndOfTurn"],
-      "RequiredTags": ["Demon", "EndOfTurn_Multiplier"],
-      "SynergyMultipliers": { "Demon": 3.0, "EndOfTurn_Multiplier": 3.0 }
+      "RequiredTags": ["Demon", "EndOfTurn_Multiplier", "Tavern_Buff"],
+      "SynergyMultipliers": { "Demon": 3.5, "EndOfTurn_Multiplier": 3.0, "Tavern_Buff": 4.0 }
     },
     {
       "Name": "Soul Rewinder",
-      "BaseWeight": 5.0,
+      "BaseWeight": 5.5,
       "ProvidedTags": ["SelfDamage_Safety"],
-      "RequiredTags": ["Self_Damage"],
-      "SynergyMultipliers": { "Self_Damage": 5.0 }
+      "RequiredTags": ["Self_Damage", "Demon"],
+      "SynergyMultipliers": { "Self_Damage": 5.0, "Demon": 2.0 }
     },
     {
       "Name": "Malchezaar, Prince of Dance",
-      "BaseWeight": 6.0,
+      "BaseWeight": 6.5,
       "ProvidedTags": ["Self_Damage", "Free_Reroll"],
-      "RequiredTags": ["SelfDamage_Safety", "Demon"],
-      "SynergyMultipliers": { "SelfDamage_Safety": 4.0, "Demon": 2.5 }
+      "RequiredTags": ["SelfDamage_Safety", "Demon", "Tavern_Consume"],
+      "SynergyMultipliers": { "SelfDamage_Safety": 4.5, "Demon": 2.5, "Tavern_Consume": 3.0 }
+    },
+    {
+      "Name": "Tichondrius",
+      "BaseWeight": 7.0,
+      "ProvidedTags": ["SelfDamage_Scaler"],
+      "RequiredTags": ["Self_Damage", "SelfDamage_Safety", "Demon"],
+      "SynergyMultipliers": { "Self_Damage": 4.5, "SelfDamage_Safety": 4.0, "Demon": 2.5 }
+    },
+    {
+      "Name": "Fleet Admiral Tethys",
+      "BaseWeight": 8.0,
+      "ProvidedTags": ["Pirate_Gold_Engine", "APM_Cycle"],
+      "RequiredTags": ["Pirate", "Card_Draw_Pirate"],
+      "SynergyMultipliers": { "Pirate": 4.0, "Card_Draw_Pirate": 3.5 }
     },
     {
       "Name": "Peggy Sturdybone",
-      "BaseWeight": 4.0,
+      "BaseWeight": 5.0,
       "ProvidedTags": ["Pirate_Buffer"],
-      "RequiredTags": ["Card_Draw_Pirate", "Pirate"],
-      "SynergyMultipliers": { "Card_Draw_Pirate": 3.5, "Pirate": 2.0 }
+      "RequiredTags": ["Card_Draw_Pirate", "Pirate_Gold_Engine", "Pirate"],
+      "SynergyMultipliers": { "Card_Draw_Pirate": 4.0, "Pirate_Gold_Engine": 3.5, "Pirate": 2.0 }
     },
     {
       "Name": "Underhanded Dealer",
-      "BaseWeight": 5.5,
+      "BaseWeight": 6.0,
       "ProvidedTags": ["Pirate_Gain_Gold"],
-      "RequiredTags": ["Pirate_Gold_Engine"],
-      "SynergyMultipliers": { "Pirate_Gold_Engine": 4.0 }
+      "RequiredTags": ["Pirate_Gold_Engine", "APM_Cycle", "Pirate"],
+      "SynergyMultipliers": { "Pirate_Gold_Engine": 4.5, "APM_Cycle": 3.5, "Pirate": 2.5 }
+    },
+    {
+      "Name": "Dread Admiral Eliza",
+      "BaseWeight": 6.5,
+      "ProvidedTags": ["Pirate_Combat_Buffer"],
+      "RequiredTags": ["Pirate", "Deathrattle_Trigger_x2", "Token_Beasts"],
+      "SynergyMultipliers": { "Pirate": 3.5, "Deathrattle_Trigger_x2": 3.0, "Token_Beasts": 2.5 }
     },
     {
       "Name": "Kalecgos, Arcane Aspect",
-      "BaseWeight": 8.0,
+      "BaseWeight": 8.5,
       "ProvidedTags": ["Dragon_Battlecry_Engine"],
       "RequiredTags": ["Battlecry_Spam", "Dragon", "Battlecry_x2"],
-      "SynergyMultipliers": { "Battlecry_Spam": 4.0, "Dragon": 2.5, "Battlecry_x2": 3.5 }
+      "SynergyMultipliers": { "Battlecry_Spam": 4.5, "Dragon": 3.0, "Battlecry_x2": 4.0 }
     },
     {
       "Name": "Brann Bronzebeard",
-      "BaseWeight": 8.5,
+      "BaseWeight": 9.0,
       "ProvidedTags": ["Battlecry_x2"],
       "RequiredTags": ["Battlecry_Spam", "Dragon_Battlecry_Engine", "Murloc_Battlecry"],
-      "SynergyMultipliers": { "Battlecry_Spam": 3.5, "Dragon_Battlecry_Engine": 4.0, "Murloc_Battlecry": 4.0 }
+      "SynergyMultipliers": { "Battlecry_Spam": 4.0, "Dragon_Battlecry_Engine": 4.5, "Murloc_Battlecry": 4.5 }
+    },
+    {
+      "Name": "Persistent Poet",
+      "BaseWeight": 7.0,
+      "ProvidedTags": ["Dragon_Permanent_Buff"],
+      "RequiredTags": ["Dragon", "Combat_Buff_Target"],
+      "SynergyMultipliers": { "Dragon": 3.5, "Combat_Buff_Target": 4.5 }
+    },
+    {
+      "Name": "Tarecgosa",
+      "BaseWeight": 5.0,
+      "ProvidedTags": ["Combat_Buff_Target"],
+      "RequiredTags": ["Dragon_Permanent_Buff", "Dragon"],
+      "SynergyMultipliers": { "Dragon_Permanent_Buff": 5.0, "Dragon": 2.5 }
     },
     {
       "Name": "Deep Blue Crooner",
-      "BaseWeight": 6.0,
+      "BaseWeight": 6.5,
       "ProvidedTags": ["Spellcraft_DeepBlue"],
       "RequiredTags": ["Spellcraft_Duplicator", "Naga"],
-      "SynergyMultipliers": { "Spellcraft_Duplicator": 5.0, "Naga": 2.0 }
+      "SynergyMultipliers": { "Spellcraft_Duplicator": 5.5, "Naga": 2.5 }
     },
     {
       "Name": "Zesty Shaker",
-      "BaseWeight": 6.0,
+      "BaseWeight": 6.5,
       "ProvidedTags": ["Spellcraft_Duplicator"],
-      "RequiredTags": ["Spellcraft_DeepBlue"],
-      "SynergyMultipliers": { "Spellcraft_DeepBlue": 5.0 }
+      "RequiredTags": ["Spellcraft_DeepBlue", "Naga"],
+      "SynergyMultipliers": { "Spellcraft_DeepBlue": 5.5, "Naga": 2.5 }
+    },
+    {
+      "Name": "Critter Wrangler",
+      "BaseWeight": 6.0,
+      "ProvidedTags": ["Spellcraft_Buffer"],
+      "RequiredTags": ["Spellcraft_DeepBlue", "Spellcraft_Duplicator", "Naga"],
+      "SynergyMultipliers": { "Spellcraft_DeepBlue": 3.5, "Spellcraft_Duplicator": 3.5, "Naga": 2.5 }
+    },
+    {
+      "Name": "Bream Counter",
+      "BaseWeight": 5.5,
+      "ProvidedTags": ["Handbuff_Murloc"],
+      "RequiredTags": ["Murloc", "Handbuff_Summoner"],
+      "SynergyMultipliers": { "Murloc": 3.5, "Handbuff_Summoner": 4.5 }
+    },
+    {
+      "Name": "Bassgill",
+      "BaseWeight": 7.0,
+      "ProvidedTags": ["Handbuff_Summoner", "Deathrattle"],
+      "RequiredTags": ["Handbuff_Murloc", "Scam_Tech", "Deathrattle_Trigger_x2"],
+      "SynergyMultipliers": { "Handbuff_Murloc": 4.5, "Scam_Tech": 4.0, "Deathrattle_Trigger_x2": 3.0 }
+    },
+    {
+      "Name": "Choral Mrrrglr",
+      "BaseWeight": 7.5,
+      "ProvidedTags": ["Handbuff_Finisher"],
+      "RequiredTags": ["Handbuff_Murloc", "Murloc"],
+      "SynergyMultipliers": { "Handbuff_Murloc": 4.5, "Murloc": 3.0 }
+    },
+    {
+      "Name": "Tea Master Theotar",
+      "BaseWeight": 8.0,
+      "ProvidedTags": ["Menagerie_Buffer"],
+      "RequiredTags": ["Neutral_Play", "Menagerie"],
+      "SynergyMultipliers": { "Neutral_Play": 4.0, "Menagerie": 3.5 }
+    },
+    {
+      "Name": "Leeroy the Reckless",
+      "BaseWeight": 6.5,
+      "ProvidedTags": ["Scam_Tech", "Deathrattle"],
+      "RequiredTags": ["Handbuff_Summoner", "Deathrattle_Trigger_x2"],
+      "SynergyMultipliers": { "Handbuff_Summoner": 3.5, "Deathrattle_Trigger_x2": 2.5 }
+    },
+    {
+      "Name": "Transmuted Bramblewitch",
+      "BaseWeight": 6.5,
+      "ProvidedTags": ["Scam_Tech"],
+      "RequiredTags": ["Menagerie"],
+      "SynergyMultipliers": { "Menagerie": 2.5 }
     }
   ]
 }
