@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Controls;
+using HearthDb.Enums;
 using Hearthstone_Deck_Tracker.API;
 using Hearthstone_Deck_Tracker.Plugins;
-using Hearthstone_Deck_Tracker.Enums;
 using Hearthstone_Deck_Tracker.Hearthstone;
 
 namespace BGSnowballEngine
@@ -50,52 +50,61 @@ namespace BGSnowballEngine
             {
                 if (Core.Game == null || Core.Game.Player == null) return;
 
-                if (Core.Game.CurrentGameMode != GameMode.Battlegrounds)
+                // Проверка наличия матча
+                if (!Core.Game.IsBattlegroundsMatch && Core.Game.Opponent?.Name != "Бармен Боб" && Core.Game.Opponent?.Name != "Bartender Bob")
                 {
                     _overlay?.ClearHighlights();
                     return;
                 }
 
-                var playerEntities = Core.Game.Player.Board?.Where(e => e != null && e.Card != null).ToList();
-                var tavernEntities = Core.Game.Opponent?.Board?.Where(e => e != null && e.Card != null).ToList();
+                var playerEntities = Core.Game.Player.Board?.Where(e => e != null && e.Card != null && e.IsMinion).ToList();
+                var boardCards = playerEntities != null ? playerEntities.Select(e => e.Card).ToList() : new List<Card>();
 
-                if (playerEntities != null && _engine != null && _overlay != null)
+                // 1. Всегда обновляем плашку сборки
+                if (_engine != null && _overlay != null)
                 {
-                    var boardCards = playerEntities.Select(e => e.Card).ToList();
-
-                    // Обновляем правую плашку предсказанной сборки
                     var buildSummary = _engine.AnalyzeBuild(boardCards);
                     _overlay.UpdateBuildStatus(buildSummary);
+                }
 
-                    // Оцениваем таверну Боба и подсвечиваем контуры
-                    if (tavernEntities != null && tavernEntities.Count > 0)
+                // 2. Получаем существ в таверне и сортируем строго слева направо
+                var tavernEntities = Core.Game.Opponent?.Board?
+                    .Where(e => e != null && e.Card != null && e.IsMinion && e.IsInPlay)
+                    .OrderBy(e => e.GetTag(GameTag.ZONE_POSITION))
+                    .ToList();
+
+                if (tavernEntities != null && tavernEntities.Count > 0 && _engine != null && _overlay != null)
+                {
+                    var scoredSlots = new List<ScoredSlot>();
+                    int totalCount = tavernEntities.Count;
+
+                    for (int i = 0; i < totalCount; i++)
                     {
-                        var scoredItems = new List<ScoredTavernEntity>();
-                        int totalCount = tavernEntities.Count;
+                        var entity = tavernEntities[i];
+                        var singleList = new List<Card> { entity.Card };
+                        
+                        var scoreDict = _engine.EvaluateTavern(singleList, boardCards);
+                        double score = scoreDict.ContainsKey(entity.Card) ? scoreDict[entity.Card] : 1.0;
 
-                        for (int i = 0; i < totalCount; i++)
+                        // Золотой триплет или точное совпадение
+                        if (boardCards.Count(c => c.Id == entity.Card.Id) == 2)
                         {
-                            var entity = tavernEntities[i];
-                            var singleList = new List<Card> { entity.Card };
-                            
-                            var scoreDict = _engine.EvaluateTavern(singleList, boardCards);
-                            double score = scoreDict.ContainsKey(entity.Card) ? scoreDict[entity.Card] : 0.0;
-
-                            scoredItems.Add(new ScoredTavernEntity
-                            {
-                                Entity = entity,
-                                SlotIndex = i,
-                                TotalSlots = totalCount,
-                                Score = score
-                            });
+                            score += 10.0;
                         }
 
-                        _overlay.UpdateTavernHighlights(scoredItems);
+                        scoredSlots.Add(new ScoredSlot
+                        {
+                            SlotIndex = i,
+                            TotalSlots = totalCount,
+                            Score = score
+                        });
                     }
-                    else
-                    {
-                        _overlay.ClearHighlights();
-                    }
+
+                    _overlay.UpdateTavernHighlights(scoredSlots);
+                }
+                else
+                {
+                    _overlay?.ClearHighlights();
                 }
             }
             catch { }
