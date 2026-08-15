@@ -23,6 +23,14 @@ namespace BGSnowballEngine
         public Dictionary<string, double> SynergyMultipliers { get; set; } = new Dictionary<string, double>();
     }
 
+    public class ArchetypeSummary
+    {
+        public string Name { get; set; } = "Поиск направления";
+        public string Subtitle { get; set; } = "Ранняя игра / Темп";
+        public int SynergyPower { get; set; } = 0;
+        public List<string> CoreTags { get; set; } = new List<string>();
+    }
+
     public class EngineCore
     {
         private SynergyMatrixData _matrix = new SynergyMatrixData();
@@ -40,7 +48,70 @@ namespace BGSnowballEngine
                     _matrix = JsonConvert.DeserializeObject<SynergyMatrixData>(json) ?? new SynergyMatrixData();
                 }
             }
-            catch (Exception) { }
+            catch { }
+        }
+
+        public ArchetypeSummary AnalyzeBuild(IEnumerable<Card> playerBoard)
+        {
+            var summary = new ArchetypeSummary();
+            if (playerBoard == null || !playerBoard.Any()) return summary;
+
+            var raceCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var activeTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var card in playerBoard)
+            {
+                if (card == null) continue;
+
+                if (!string.IsNullOrEmpty(card.Race) && card.Race != "Invalid")
+                {
+                    raceCounts[card.Race] = raceCounts.ContainsKey(card.Race) ? raceCounts[card.Race] + 1 : 1;
+                    activeTags.Add(card.Race);
+                }
+
+                var config = FindConfig(card);
+                if (config?.ProvidedTags != null)
+                {
+                    foreach (var tag in config.ProvidedTags)
+                        activeTags.Add(tag);
+                }
+            }
+
+            if (raceCounts.Count == 0) return summary;
+
+            var topRace = raceCounts.OrderByDescending(x => x.Value).FirstOrDefault();
+            int totalMinions = playerBoard.Count();
+
+            // Распознавание ключевых архетипов
+            if (topRace.Value >= 2)
+            {
+                summary.Name = TranslateRace(topRace.Key);
+                summary.SynergyPower = Math.Min(100, (int)((topRace.Value / (double)totalMinions) * 100) + (activeTags.Count * 5));
+
+                if (activeTags.Contains("Token_Beasts") || activeTags.Contains("Deathrattle_Trigger_x2"))
+                    summary.Subtitle = "Спам токенов / Хрипы";
+                else if (activeTags.Contains("Gem_Scaling") || activeTags.Contains("BloodGem_Engine"))
+                    summary.Subtitle = "Масштабирование самоцветов";
+                else if (activeTags.Contains("Magnetic_Echo") || activeTags.Contains("DivineShield_Attacker"))
+                    summary.Subtitle = "Магнетизм / Щиты";
+                else if (activeTags.Contains("APM_Cycle"))
+                    summary.Subtitle = "Прокрутка таверны (APM)";
+                else if (activeTags.Contains("Self_Damage"))
+                    summary.Subtitle = "Урон по герою (Self-Damage)";
+                else if (activeTags.Contains("Handbuff_Murloc"))
+                    summary.Subtitle = "Раскачка руки / Яды";
+                else
+                    summary.Subtitle = "Классический триб";
+            }
+            else if (raceCounts.Count >= 3)
+            {
+                summary.Name = "Солянка (Menagerie)";
+                summary.Subtitle = "Мульти-трибы / Теотар";
+                summary.SynergyPower = Math.Min(100, raceCounts.Count * 20);
+            }
+
+            summary.CoreTags = activeTags.Take(4).ToList();
+            return summary;
         }
 
         public Dictionary<Card, double> EvaluateTavern(IEnumerable<Card> tavernCards, IEnumerable<Card> playerBoard)
@@ -50,36 +121,29 @@ namespace BGSnowballEngine
 
             var activeTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            // 1. Сбор тегов с нашего стола
             foreach (var boardCard in playerBoard)
             {
                 if (boardCard == null) continue;
-
-                // Автоматический сбор тега расы существа
                 if (!string.IsNullOrEmpty(boardCard.Race))
                     activeTags.Add(boardCard.Race);
 
-                // Поиск кастомных тегов из JSON-базы
                 var config = FindConfig(boardCard);
-                if (config != null && config.ProvidedTags != null)
+                if (config?.ProvidedTags != null)
                 {
                     foreach (var tag in config.ProvidedTags)
                         activeTags.Add(tag);
                 }
             }
 
-            // 2. Оценка карт в таверне Боба
             foreach (var tavernCard in tavernCards)
             {
                 if (tavernCard == null) continue;
-
                 double score = 1.0;
                 var config = FindConfig(tavernCard);
 
                 if (config != null)
                 {
                     score = config.BaseWeight;
-
                     if (config.RequiredTags != null && config.SynergyMultipliers != null)
                     {
                         foreach (var reqTag in config.RequiredTags)
@@ -91,13 +155,9 @@ namespace BGSnowballEngine
                         }
                     }
                 }
-                else
+                else if (!string.IsNullOrEmpty(tavernCard.Race) && activeTags.Contains(tavernCard.Race))
                 {
-                    // Базовый вес для карт совпавшего типа (трибы)
-                    if (!string.IsNullOrEmpty(tavernCard.Race) && activeTags.Contains(tavernCard.Race))
-                    {
-                        score = 2.5;
-                    }
+                    score = 2.5;
                 }
 
                 scoredCards[tavernCard] = score;
@@ -112,6 +172,24 @@ namespace BGSnowballEngine
             return _matrix.Cards.FirstOrDefault(c => 
                 (!string.IsNullOrEmpty(c.Id) && string.Equals(c.Id, card.Id, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(c.Name) && (string.Equals(c.Name, card.Name, StringComparison.OrdinalIgnoreCase) || string.Equals(c.Name, card.EnglishText, StringComparison.OrdinalIgnoreCase))));
+        }
+
+        private string TranslateRace(string race)
+        {
+            switch (race.ToLower())
+            {
+                case "beast": return "Звери";
+                case "quilboar": return "Свинобразы";
+                case "undead": return "Нежить";
+                case "mech": return "Механизмы";
+                case "elemental": return "Элементали";
+                case "demon": return "Демоны";
+                case "pirate": return "Пираты";
+                case "dragon": return "Драконы";
+                case "naga": return "Наги";
+                case "murloc": return "Мурлоки";
+                default: return race;
+            }
         }
     }
 }
