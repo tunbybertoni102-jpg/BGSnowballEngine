@@ -28,9 +28,7 @@ namespace BGSnowballEngine
 
             _overlay = new OverlayUI();
             
-            // Подписываемся и на начало хода, и на обновление стола
             GameEvents.OnTurnStart.Add(player => AnalyzeAndDraw());
-            GameEvents.OnGameUpdate.Add(AnalyzeAndDraw);
         }
 
         public void OnUnload()
@@ -39,7 +37,11 @@ namespace BGSnowballEngine
         }
 
         public void OnButtonPress() { }
-        public void OnUpdate() { }
+
+        public void OnUpdate()
+        {
+            AnalyzeAndDraw();
+        }
 
         private void AnalyzeAndDraw()
         {
@@ -61,7 +63,7 @@ namespace BGSnowballEngine
             }
             catch (Exception)
             {
-                // Защита от вылетов
+                // Защита от сбоев чтения
             }
         }
     }
