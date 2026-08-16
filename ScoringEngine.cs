@@ -30,17 +30,68 @@ namespace BGSnowballEngine
         public int SynergyPower { get; set; } = 0;
     }
 
+    // === Схема v2 (Patch36.2_Meta_v2_draft.json): каталог сборок сезона 14 ===
+    public class MetaCatalogV2
+    {
+        public List<BuildDef> Builds { get; set; } = new List<BuildDef>();
+        public List<SpellDef> Spells { get; set; } = new List<SpellDef>();
+        public List<string> Tier7Minions { get; set; } = new List<string>();
+    }
+
+    public class BuildDef
+    {
+        public string Id { get; set; }
+        public string NameRu { get; set; }
+        public string NameEn { get; set; }
+        public string Tier { get; set; }
+        public string Race { get; set; }
+        public string Anchor { get; set; }
+        public string Playstyle { get; set; }
+        public List<string> Tags { get; set; } = new List<string>();
+        public List<string> CoreCards { get; set; } = new List<string>();
+        public List<string> SupportCards { get; set; } = new List<string>();
+        public List<string> KeySpells { get; set; } = new List<string>();
+        public int Priority { get; set; }
+    }
+
+    public class SpellDef
+    {
+        public string Name { get; set; }
+        public int? Tier { get; set; }
+        public int? Cost { get; set; }
+        public List<string> Tags { get; set; } = new List<string>();
+        public string Note { get; set; }
+    }
+
+    public class BuildMatch
+    {
+        public BuildDef Build { get; set; }
+        public int CoreHits { get; set; }
+        public int SupportHits { get; set; }
+        public double Score { get; set; }
+    }
+
     public class EngineCore
     {
         private SynergyMatrixData _matrix = new SynergyMatrixData();
+        private MetaCatalogV2 _catalog = new MetaCatalogV2();
 
         public void Initialize()
         {
             try
             {
                 string pluginDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                string configPath = Path.Combine(pluginDir, "Patch36.2_Meta.json");
 
+                // Схема v2 (каталог сборок) — основной источник для советника
+                string v2Path = Path.Combine(pluginDir, "Patch36.2_Meta_v2_draft.json");
+                if (File.Exists(v2Path))
+                {
+                    string json = File.ReadAllText(v2Path);
+                    _catalog = JsonConvert.DeserializeObject<MetaCatalogV2>(json) ?? new MetaCatalogV2();
+                }
+
+                // Схема v1 (веса конкретных карт) — дополнительные веса/синергии
+                string configPath = Path.Combine(pluginDir, "Patch36.2_Meta.json");
                 if (File.Exists(configPath))
                 {
                     string json = File.ReadAllText(configPath);
@@ -78,6 +129,31 @@ namespace BGSnowballEngine
             var summary = new ArchetypeSummary();
             if (playerBoard == null || !playerBoard.Any()) return summary;
 
+            // 1) Сначала каталог сборок v2: определяем направление по совпадениям ядра/опоры
+            var match = FindBestBuildMatch(playerBoard);
+            if (match != null && match.Build != null && match.CoreHits + match.SupportHits > 0)
+            {
+                summary.Name = !string.IsNullOrEmpty(match.Build.NameRu)
+                    ? match.Build.NameRu
+                    : (!string.IsNullOrEmpty(match.Build.NameEn) ? match.Build.NameEn : "Сборка");
+
+                int coreTotal = match.Build.CoreCards?.Count ?? 0;
+                string tierInfo = string.IsNullOrEmpty(match.Build.Tier) ? "" : match.Build.Tier + "-тир";
+
+                if (coreTotal > 0)
+                {
+                    summary.Subtitle = $"Ядро {match.CoreHits}/{coreTotal} · опора {match.SupportHits} · {tierInfo}".TrimEnd(' ', '·');
+                    summary.SynergyPower = Math.Min(100, (int)((match.CoreHits / (double)coreTotal) * 85) + Math.Min(15, match.SupportHits * 3));
+                }
+                else
+                {
+                    summary.Subtitle = $"Опора {match.SupportHits} · {tierInfo}".TrimEnd(' ', '·');
+                    summary.SynergyPower = Math.Min(100, 40 + match.SupportHits * 8);
+                }
+                return summary;
+            }
+
+            // 2) Фолбэк: эвристика по расам/тегам (ранняя игра, направление ещё не сложилось)
             var raceCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var activeTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -168,12 +244,18 @@ namespace BGSnowballEngine
                 }
             }
 
+            // Текущее направление по каталогу сборок v2
+            var match = FindBestBuildMatch(playerBoard);
+            BuildDef direction = match?.Build;
+            string directionRace = direction != null ? NormalizeRace(direction.Race) : "Neutral";
+
             foreach (var tavernCard in tavernCards)
             {
                 if (tavernCard == null) continue;
                 double score = 1.0;
                 string tRace = NormalizeRace(tavernCard.Race);
 
+                // Совместимость с v1: веса и синергии конкретных карт
                 var config = FindConfig(tavernCard);
                 if (config != null)
                 {
@@ -194,10 +276,104 @@ namespace BGSnowballEngine
                     score = 3.5;
                 }
 
+                // v2: подгонка карты под текущее направление сборки
+                if (direction != null)
+                {
+                    var names = CardNames(tavernCard);
+                    if (names.Any(n => NameEquals(n, direction.Anchor)))
+                        score = Math.Max(score, 8.0);   // якорь сборки
+                    else if (names.Any(n => direction.CoreCards != null && direction.CoreCards.Any(c => NameEquals(c, n))))
+                        score = Math.Max(score, 7.0);   // ядро сборки
+                    else if (names.Any(n => direction.SupportCards != null && direction.SupportCards.Any(c => NameEquals(c, n))))
+                        score = Math.Max(score, 4.5);   // опора сборки
+                    else if (directionRace != "Neutral" && (tRace == directionRace || tRace == "All"))
+                        score = Math.Max(score, 3.0);   // та же раса, что и сборка
+                }
+                else if (_catalog.Builds != null)
+                {
+                    // Направления ещё нет: подсказываем якоря известных сборок
+                    var names = CardNames(tavernCard);
+                    if (_catalog.Builds.Any(b => names.Any(n => NameEquals(n, b.Anchor))))
+                        score = Math.Max(score, 2.5);
+                }
+
                 scoredCards[tavernCard] = score;
             }
 
             return scoredCards;
+        }
+
+        private BuildMatch FindBestBuildMatch(IEnumerable<Card> boardCards)
+        {
+            if (_catalog.Builds == null || boardCards == null) return null;
+            var board = boardCards.Where(c => c != null).ToList();
+            if (board.Count == 0) return null;
+
+            BuildMatch best = null;
+            foreach (var build in _catalog.Builds)
+            {
+                if (build == null) continue;
+
+                int coreHits = 0;
+                int supportHits = 0;
+                foreach (var card in board)
+                {
+                    var names = CardNames(card);
+                    if (names.Any(n => build.CoreCards != null && build.CoreCards.Any(c => NameEquals(c, n))))
+                        coreHits++;
+                    else if (names.Any(n => build.SupportCards != null && build.SupportCards.Any(c => NameEquals(c, n))))
+                        supportHits++;
+                }
+
+                if (coreHits + supportHits == 0) continue;
+
+                double score = coreHits * 3.0 + supportHits * 1.0;
+                if (best == null || score > best.Score ||
+                    (Math.Abs(score - best.Score) < 0.001 && build.Priority < best.Build.Priority))
+                {
+                    best = new BuildMatch
+                    {
+                        Build = build,
+                        CoreHits = coreHits,
+                        SupportHits = supportHits,
+                        Score = score
+                    };
+                }
+            }
+
+            return best;
+        }
+
+        private IEnumerable<string> CardNames(Card card)
+        {
+            var names = new List<string>();
+            if (card == null) return names;
+
+            string en = GetEnglishName(card);
+            if (!string.IsNullOrEmpty(en)) names.Add(en);
+            if (!string.IsNullOrEmpty(card.Name)) names.Add(card.Name);
+
+            return names;
+        }
+
+        private string GetEnglishName(Card card)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(card.Id) && HearthDb.Cards.All.TryGetValue(card.Id, out var dbCard))
+                    return dbCard.Name;
+            }
+            catch
+            {
+                // HearthDb может быть недоступен в отдельных сборках — молча пропускаем
+            }
+            return null;
+        }
+
+        private static bool NameEquals(string a, string b)
+        {
+            if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return false;
+            return string.Equals(a.Trim(), b.Trim(), StringComparison.OrdinalIgnoreCase);
         }
 
         private CardConfig FindConfig(Card card)
