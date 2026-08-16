@@ -40,8 +40,9 @@ namespace BGSnowballEngine
 
         public void OnUnload()
         {
-            GameEvents.OnGameEnd.Remove(HidePanel);
-            GameEvents.OnInMenu.Remove(HidePanel);
+            // В HDT v1.55.6 (релиз, против которого собирается CI) у ActionList нет метода Remove —
+            // он появился только в master. Отписка не требуется: HDT сам пропускает обработчики
+            // отключённых плагинов (проверка plugin.IsEnabled в ActionList.Execute).
             _overlay?.ClearOverlay();
         }
 
