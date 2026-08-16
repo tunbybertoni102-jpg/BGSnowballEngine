@@ -15,7 +15,7 @@ namespace BGSnowballEngine
         public string Description => "Эвристический анализатор для Полей Сражений.";
         public string ButtonText => "Настройки";
         public string Author => "AI & User";
-        public Version Version => new Version(1, 0, 0);
+        public Version Version => new Version(1, 1, 0);
 
         public MenuItem MenuItem => null;
 
@@ -82,6 +82,9 @@ namespace BGSnowballEngine
                 if (signature == _lastSignature) return;
                 _lastSignature = signature;
 
+                var scoredSlots = new List<ScoredSlot>();
+                bool tavernHasTriplet = false;
+
                 // 1. Всегда обновляем плашку сборки
                 if (_engine != null && _overlay != null)
                 {
@@ -92,7 +95,6 @@ namespace BGSnowballEngine
                 // 2. Подсветка карт в таверне
                 if (tavernEntities != null && tavernEntities.Count > 0 && _engine != null && _overlay != null)
                 {
-                    var scoredSlots = new List<ScoredSlot>();
                     int totalCount = tavernEntities.Count;
 
                     for (int i = 0; i < totalCount; i++)
@@ -107,6 +109,7 @@ namespace BGSnowballEngine
                         if (boardCards.Count(c => c.Id == entity.Card.Id) == 2)
                         {
                             score += 10.0;
+                            tavernHasTriplet = true;
                         }
 
                         scoredSlots.Add(new ScoredSlot
@@ -123,10 +126,43 @@ namespace BGSnowballEngine
                 {
                     _overlay?.ClearHighlights();
                 }
+
+                // 3. Подсказка действия (тир / золото / здоровье / таверна)
+                if (_engine != null && _overlay != null)
+                {
+                    var state = CaptureGameState();
+                    state.BoardSize = boardCards.Count;
+
+                    double bestScore = scoredSlots.Count > 0 ? scoredSlots.Max(s => s.Score) : 1.0;
+                    var advice = _engine.Advise(state, boardCards, bestScore, tavernHasTriplet);
+                    _overlay.UpdateAdvice(advice);
+                }
             }
             catch (Exception ex)
             {
                 Logger.Log(ex);
+            }
+        }
+
+        private GameStateSnapshot CaptureGameState()
+        {
+            try
+            {
+                int tier = Core.Game.Player.GetTag(GameTag.PLAYER_TECH_LEVEL);
+                int gold = Core.Game.Player.Hero?.GetTag(GameTag.RESOURCES) ?? 0;
+                int health = Core.Game.Player.Health;
+
+                return new GameStateSnapshot
+                {
+                    TavernTier = tier,
+                    Gold = gold,
+                    Health = health
+                };
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(ex);
+                return new GameStateSnapshot();
             }
         }
 

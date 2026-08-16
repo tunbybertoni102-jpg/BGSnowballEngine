@@ -71,6 +71,22 @@ namespace BGSnowballEngine
         public double Score { get; set; }
     }
 
+    // === Состояние игры для советника (фаза 2) ===
+    public class GameStateSnapshot
+    {
+        public int TavernTier { get; set; }
+        public int Gold { get; set; }
+        public int Health { get; set; }
+        public int BoardSize { get; set; }
+    }
+
+    public class ActionAdvice
+    {
+        public string Action { get; set; } = "Ждать";
+        public string Reason { get; set; } = "";
+        public int Priority { get; set; } = 1;
+    }
+
     public class EngineCore
     {
         private SynergyMatrixData _matrix = new SynergyMatrixData();
@@ -301,6 +317,77 @@ namespace BGSnowballEngine
             }
 
             return scoredCards;
+        }
+
+        // === Советник действий (фаза 2) ===
+        public ActionAdvice Advise(GameStateSnapshot state, IEnumerable<Card> board, double bestTavernScore, bool tavernHasTriplet)
+        {
+            var advice = new ActionAdvice { Action = "Ждать", Reason = "Конец хода", Priority = 1 };
+            if (state == null) return advice;
+
+            var match = FindBestBuildMatch(board);
+            bool hasDirection = match != null;
+
+            int upgradeCost = state.TavernTier + 4; // формула апгрейда (тир+4) — TODO: сверить для 36.2
+            bool canAffordUpgrade = state.Gold >= upgradeCost;
+            bool lowHealth = state.Health > 0 && state.Health <= 15;
+            bool boardFull = state.BoardSize >= 7;
+
+            // 1) Триплет в таверне — покупаем в первую очередь
+            if (tavernHasTriplet && state.Gold >= 3 && !boardFull)
+            {
+                advice.Action = "Купить триплет";
+                advice.Reason = "Триплет в таверне: золотая карта + два бафа";
+                advice.Priority = 5;
+                return advice;
+            }
+
+            // 2) Карта ядра/опоры текущей сборки (или сильный старт направления)
+            if (bestTavernScore >= 4.5 && state.Gold >= 3 && !boardFull)
+            {
+                string buildName = match?.Build?.NameRu;
+                advice.Action = "Купить карту";
+                advice.Reason = hasDirection
+                    ? $"Карта под сборку «{buildName}» (скор {bestTavernScore:0.#})"
+                    : $"Сильная карта для старта (скор {bestTavernScore:0.#})";
+                advice.Priority = 4;
+                return advice;
+            }
+
+            // 3) Темп-покупка при низком здоровье
+            if (lowHealth && bestTavernScore >= 3.0 && state.Gold >= 3 && !boardFull)
+            {
+                advice.Action = "Купить темп";
+                advice.Reason = $"Здоровье {state.Health} — усиливаем стол, а не гоним тир";
+                advice.Priority = 3;
+                return advice;
+            }
+
+            // 4) Апгрейд таверны
+            if (canAffordUpgrade)
+            {
+                advice.Action = "Апгрейд таверны";
+                advice.Reason = $"Тир {state.TavernTier} → {state.TavernTier + 1} за {upgradeCost} золота";
+                advice.Priority = 4;
+                return advice;
+            }
+
+            // 5) Реролл в поисках ядра сборки
+            if (state.Gold >= 3 && hasDirection)
+            {
+                advice.Action = "Реролл";
+                advice.Reason = "В таверне нет карт под сборку — ищем ядро";
+                advice.Priority = 2;
+                return advice;
+            }
+
+            // 6) Ждать (конец хода)
+            advice.Action = "Ждать";
+            advice.Reason = state.Gold < 3
+                ? "Мало золота для действий"
+                : "Таверна не предлагает ничего важного";
+            advice.Priority = 1;
+            return advice;
         }
 
         private BuildMatch FindBestBuildMatch(IEnumerable<Card> boardCards)
