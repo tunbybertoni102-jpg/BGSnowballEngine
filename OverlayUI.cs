@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using Hearthstone_Deck_Tracker.API;
+using Hearthstone_Deck_Tracker.Utility.Extensions;
 
 namespace BGSnowballEngine
 {
@@ -76,6 +77,9 @@ namespace BGSnowballEngine
 
             _canvas.Dispatcher.Invoke(() =>
             {
+                // Защита от повторной инициализации (перезапуск игры/реконфигурация)
+                if (_buildPanel != null) return;
+
                 _buildPanel = new Border
                 {
                     Width = 200,
@@ -84,8 +88,8 @@ namespace BGSnowballEngine
                     BorderThickness = new Thickness(1.5),
                     CornerRadius = new CornerRadius(8),
                     Padding = new Thickness(10, 8, 10, 8),
-                    // Hit-test нужен для перетаскивания панели мышью.
-                    // Компромисс: небольшой участок у правого края перехватывает клики.
+                    // WPF hit-test внутри окна; клик-сквозной режим самого окна HDT
+                    // снимается регистрацией через SetIsOverlayHitTestVisible (ниже)
                     IsHitTestVisible = true,
                     Cursor = Cursors.SizeAll,
                     Effect = new DropShadowEffect
@@ -97,9 +101,20 @@ namespace BGSnowballEngine
                     }
                 };
 
+                // КЛЮЧЕВОЕ: окно оверлея HDT постоянно клик-сквозное (WS_EX_TRANSPARENT).
+                // Регистрация панели как интерактивной заставляет HDT снимать
+                // клик-сквозной режим при наведении курсора (UpdateHoverable, 60 Гц).
+                OverlayExtensions.SetIsOverlayHitTestVisible(_buildPanel, true);
+
+                // Отписка перед подпиской — защита от двойных обработчиков при реините
+                _buildPanel.MouseLeftButtonDown -= OnPanelMouseDown;
                 _buildPanel.MouseLeftButtonDown += OnPanelMouseDown;
+                _buildPanel.MouseMove -= OnPanelMouseMove;
                 _buildPanel.MouseMove += OnPanelMouseMove;
+                _buildPanel.MouseLeftButtonUp -= OnPanelMouseUp;
                 _buildPanel.MouseLeftButtonUp += OnPanelMouseUp;
+                _buildPanel.LostMouseCapture -= OnPanelLostMouseCapture;
+                _buildPanel.LostMouseCapture += OnPanelLostMouseCapture;
 
                 var stack = new StackPanel();
 
@@ -182,32 +197,90 @@ namespace BGSnowballEngine
             Canvas.SetTop(_buildPanel, screenH * 0.22);
         }
 
+        /// <summary>
+        /// Не сбрасываем позицию при каждом обновлении (панель перетаскивается!),
+        /// а только возвращаем её в границы канваса, если та вышла за них.
+        /// </summary>
+        private void ClampPanelToBounds()
+        {
+            if (_buildPanel == null) return;
+
+            double left = Canvas.GetLeft(_buildPanel);
+            double top = Canvas.GetTop(_buildPanel);
+            if (double.IsNaN(left)) left = 0;
+            if (double.IsNaN(top)) top = 0;
+
+            double panelW = _buildPanel.ActualWidth > 0 ? _buildPanel.ActualWidth : _buildPanel.Width;
+            double panelH = _buildPanel.ActualHeight > 0 ? _buildPanel.ActualHeight : _buildPanel.Height;
+            double maxX = Math.Max(0, GetCanvasWidth() - panelW - 8);
+            double maxY = Math.Max(0, GetCanvasHeight() - panelH - 8);
+
+            Canvas.SetLeft(_buildPanel, Math.Max(0, Math.Min(left, maxX)));
+            Canvas.SetTop(_buildPanel, Math.Max(0, Math.Min(top, maxY)));
+        }
+
         private void OnPanelMouseDown(object sender, MouseButtonEventArgs e)
         {
+            if (_buildPanel == null || _canvas == null) return;
+
             _dragging = true;
             _dragStart = e.GetPosition(_canvas);
-            _panelLeft = Canvas.GetLeft(_buildPanel);
-            _panelTop = Canvas.GetTop(_buildPanel);
+
+            // Canvas.GetLeft/GetTop возвращают NaN, если позиция ещё не задана
+            double curLeft = Canvas.GetLeft(_buildPanel);
+            double curTop = Canvas.GetTop(_buildPanel);
+            _panelLeft = double.IsNaN(curLeft) ? 0 : curLeft;
+            _panelTop = double.IsNaN(curTop) ? 0 : curTop;
+
             _buildPanel.CaptureMouse();
             e.Handled = true;
         }
 
         private void OnPanelMouseMove(object sender, MouseEventArgs e)
         {
-            if (!_dragging || _buildPanel == null) return;
+            if (!_dragging || _buildPanel == null || _canvas == null) return;
 
             var pos = e.GetPosition(_canvas);
-            double newLeft = Math.Max(0, Math.Min(_panelLeft + (pos.X - _dragStart.X), GetCanvasWidth() - _buildPanel.Width - 8));
-            double newTop = Math.Max(0, Math.Min(_panelTop + (pos.Y - _dragStart.Y), GetCanvasHeight() - 60));
+
+            // ActualWidth/Height вместо Width: у auto-элементов Width == NaN
+            double panelW = _buildPanel.ActualWidth > 0 ? _buildPanel.ActualWidth : _buildPanel.Width;
+            double panelH = _buildPanel.ActualHeight > 0 ? _buildPanel.ActualHeight : _buildPanel.Height;
+            double maxX = Math.Max(0, GetCanvasWidth() - panelW - 8);
+            double maxY = Math.Max(0, GetCanvasHeight() - panelH - 8);
+
+            double newLeft = Math.Max(0, Math.Min(_panelLeft + (pos.X - _dragStart.X), maxX));
+            double newTop = Math.Max(0, Math.Min(_panelTop + (pos.Y - _dragStart.Y), maxY));
 
             Canvas.SetLeft(_buildPanel, newLeft);
             Canvas.SetTop(_buildPanel, newTop);
+            e.Handled = true;
         }
 
         private void OnPanelMouseUp(object sender, MouseButtonEventArgs e)
         {
+            // Без этой проверки «лишний» MouseUp (после потери захвата) сбросит чужой драг
+            if (!_dragging) return;
+
             _dragging = false;
             _buildPanel?.ReleaseMouseCapture();
+            e.Handled = true;
+        }
+
+        private void OnPanelLostMouseCapture(object sender, MouseEventArgs e)
+        {
+            // Alt-Tab, скрытие оверлея и т.п. — иначе панель «поедет» без зажатой кнопки
+            _dragging = false;
+        }
+
+        public void SetVisible(bool visible)
+        {
+            if (_canvas == null || _buildPanel == null) return;
+
+            _canvas.Dispatcher.Invoke(() =>
+            {
+                _buildPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+                if (visible) ClampPanelToBounds();
+            });
         }
 
         public void UpdateBuildStatus(ArchetypeSummary summary)
@@ -216,7 +289,7 @@ namespace BGSnowballEngine
 
             _canvas.Dispatcher.Invoke(() =>
             {
-                UpdatePanelPosition();
+                ClampPanelToBounds();
                 _buildTitle.Text = summary.Name;
                 _buildSubtitle.Text = summary.Subtitle;
                 _progressBar.Value = Math.Max(0, Math.Min(100, summary.SynergyPower));
@@ -355,7 +428,10 @@ namespace BGSnowballEngine
                 ClearHighlights();
                 if (_buildPanel != null)
                 {
+                    // Снимаем регистрацию интерактивности, чтобы HDT не держал ссылку
+                    OverlayExtensions.SetIsOverlayHitTestVisible(_buildPanel, false);
                     _canvas.Children.Remove(_buildPanel);
+                    _buildPanel = null;
                 }
             });
         }

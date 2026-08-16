@@ -15,7 +15,7 @@ namespace BGSnowballEngine
         public string Description => "Эвристический анализатор для Полей Сражений.";
         public string ButtonText => "Настройки";
         public string Author => "AI & User";
-        public Version Version => new Version(1, 2, 0);
+        public Version Version => new Version(1, 2, 1);
 
         public MenuItem MenuItem => null;
 
@@ -63,6 +63,7 @@ namespace BGSnowballEngine
                 {
                     _lastSignature = string.Empty;
                     _overlay?.ClearHighlights();
+                    _overlay?.SetVisible(false);
                     return;
                 }
 
@@ -133,6 +134,9 @@ namespace BGSnowballEngine
                     var state = CaptureGameState();
                     state.BoardSize = boardCards.Count;
 
+                    // Панель советника показываем только в партии (тир > 0)
+                    _overlay.SetVisible(state.TavernTier > 0);
+
                     double bestScore = scoredSlots.Count > 0 ? scoredSlots.Max(s => s.Score) : 1.0;
                     var advice = _engine.Advise(state, boardCards, bestScore, tavernHasTriplet);
                     _overlay.UpdateAdvice(advice);
@@ -149,7 +153,8 @@ namespace BGSnowballEngine
             try
             {
                 // API HDT (проверено по исходникам): тир/золото лежат на PlayerEntity и Hero,
-                // здоровье героя = HEALTH - DAMAGE. Player.GetTag / Player.Health НЕ существуют.
+                // здоровье героя = HEALTH + ARMOR - DAMAGE (в BG броня поглощает урон первой).
+                // Player.GetTag / Player.Health НЕ существуют.
                 var playerEntity = Core.Game?.PlayerEntity;
                 var hero = Core.Game?.Player?.Hero;
 
@@ -157,7 +162,9 @@ namespace BGSnowballEngine
                                     hero?.GetTag(GameTag.PLAYER_TECH_LEVEL) ?? 0);
                 int gold = Math.Max(playerEntity?.GetTag(GameTag.RESOURCES) ?? 0,
                                     hero?.GetTag(GameTag.RESOURCES) ?? 0);
-                int health = Math.Max(0, (hero?.GetTag(GameTag.HEALTH) ?? 0) - (hero?.GetTag(GameTag.DAMAGE) ?? 0));
+                int health = Math.Max(0, (hero?.GetTag(GameTag.HEALTH) ?? 0)
+                                         + (hero?.GetTag(GameTag.ARMOR) ?? 0)
+                                         - (hero?.GetTag(GameTag.DAMAGE) ?? 0));
 
                 return new GameStateSnapshot
                 {
