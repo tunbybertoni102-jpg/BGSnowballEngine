@@ -22,6 +22,9 @@ namespace BGSnowballEngine
         private Canvas _canvas;
         private List<UIElement> _dynamicElements = new List<UIElement>();
 
+        private double _canvasW;
+        private double _canvasH;
+
         private Border _buildPanel;
         private TextBlock _buildTitle;
         private TextBlock _buildSubtitle;
@@ -30,7 +33,33 @@ namespace BGSnowballEngine
         public OverlayUI()
         {
             _canvas = Core.OverlayCanvas;
+            if (_canvas != null)
+            {
+                // Отслеживаем реальный размер канваса: координаты подсветки
+                // должны совпадать с окном игры, а не с размером экрана
+                _canvas.SizeChanged += OnCanvasSizeChanged;
+            }
             InitRightSidePanel();
+        }
+
+        private void OnCanvasSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            _canvasW = _canvas.ActualWidth;
+            _canvasH = _canvas.ActualHeight;
+        }
+
+        private double GetCanvasWidth()
+        {
+            return _canvas.ActualWidth > 0 ? _canvas.ActualWidth
+                : _canvasW > 0 ? _canvasW
+                : SystemParameters.PrimaryScreenWidth;
+        }
+
+        private double GetCanvasHeight()
+        {
+            return _canvas.ActualHeight > 0 ? _canvas.ActualHeight
+                : _canvasH > 0 ? _canvasH
+                : SystemParameters.PrimaryScreenHeight;
         }
 
         private void InitRightSidePanel()
@@ -107,8 +136,8 @@ namespace BGSnowballEngine
 
         private void UpdatePanelPosition()
         {
-            double screenW = _canvas.ActualWidth > 0 ? _canvas.ActualWidth : SystemParameters.PrimaryScreenWidth;
-            double screenH = _canvas.ActualHeight > 0 ? _canvas.ActualHeight : SystemParameters.PrimaryScreenHeight;
+            double screenW = GetCanvasWidth();
+            double screenH = GetCanvasHeight();
 
             Canvas.SetLeft(_buildPanel, screenW - 225);
             Canvas.SetTop(_buildPanel, screenH * 0.22);
@@ -138,17 +167,18 @@ namespace BGSnowballEngine
 
                 if (items == null || items.Count == 0) return;
 
-                // Подсвечиваем любые совпавшие карты со скором >= 2.0
+                // Подсвечиваем карты со скором >= 2.0
                 var targets = items.Where(x => x.Score >= 2.0).ToList();
                 if (targets.Count == 0) return;
 
-                double screenW = _canvas.ActualWidth > 0 ? _canvas.ActualWidth : SystemParameters.PrimaryScreenWidth;
-                double screenH = _canvas.ActualHeight > 0 ? _canvas.ActualHeight : SystemParameters.PrimaryScreenHeight;
+                double screenW = GetCanvasWidth();
+                double screenH = GetCanvasHeight();
 
-                double cardW = screenW * 0.072;
-                double cardH = screenH * 0.128;
-                double stepX = screenW * 0.0885;
-                double tavernY = screenH * 0.288;
+                // Геометрия слотов таверны (до 7 слотов, центрирование)
+                double cardW = screenW * 0.078;
+                double cardH = screenH * 0.126;
+                double stepX = screenW * 0.0935;
+                double tavernY = screenH * 0.290;
                 double centerX = screenW / 2.0;
 
                 foreach (var item in targets)
@@ -158,27 +188,21 @@ namespace BGSnowballEngine
                     double posY = tavernY - (cardH / 2.0);
 
                     bool isHighPriority = item.Score >= 5.0;
-                    Brush strokeColor = isHighPriority ? Brushes.Gold : Brushes.LimeGreen;
-                    Color glowFill = isHighPriority ? Color.FromArgb(70, 255, 215, 0) : Color.FromArgb(50, 0, 255, 0);
+                    Color strokeColor = isHighPriority
+                        ? Color.FromRgb(0xD4, 0xAF, 0x37) // золото
+                        : Color.FromRgb(0x4A, 0xDE, 0x80); // зелёный
 
-                    // Овал строго по форме существа в таверне
+                    // 1) Тонкий контур строго по границе карты — арт карты остаётся видимым
                     Rectangle contour = new Rectangle
                     {
                         Width = cardW,
                         Height = cardH,
-                        Stroke = strokeColor,
-                        StrokeThickness = 3.5,
-                        RadiusX = 18,
-                        RadiusY = 18,
-                        Fill = new SolidColorBrush(glowFill),
-                        IsHitTestVisible = false,
-                        Effect = new DropShadowEffect
-                        {
-                            Color = isHighPriority ? Colors.Gold : Colors.LimeGreen,
-                            BlurRadius = 8,
-                            ShadowDepth = 0,
-                            Opacity = 0.85
-                        }
+                        Stroke = new SolidColorBrush(strokeColor),
+                        StrokeThickness = 2.5,
+                        RadiusX = 14,
+                        RadiusY = 14,
+                        Fill = new SolidColorBrush(Color.FromArgb(24, 255, 255, 255)),
+                        IsHitTestVisible = false
                     };
 
                     Canvas.SetLeft(contour, posX);
@@ -186,20 +210,44 @@ namespace BGSnowballEngine
                     _canvas.Children.Add(contour);
                     _dynamicElements.Add(contour);
 
-                    // Компактный бейдж рейтинга
-                    TextBlock badge = new TextBlock
+                    // 2) Мягкая линия-свечение под картой (ничего не перекрывает)
+                    Rectangle glow = new Rectangle
                     {
-                        Text = $"★ {item.Score:0.#}",
-                        FontSize = 11,
-                        FontWeight = FontWeights.ExtraBold,
-                        Foreground = Brushes.White,
-                        Background = new SolidColorBrush(Color.FromArgb(220, 10, 10, 10)),
-                        Padding = new Thickness(5, 1, 5, 1),
+                        Width = cardW * 0.8,
+                        Height = 4,
+                        RadiusX = 2,
+                        RadiusY = 2,
+                        Fill = new SolidColorBrush(Color.FromArgb(210, strokeColor.R, strokeColor.G, strokeColor.B)),
                         IsHitTestVisible = false
                     };
 
-                    Canvas.SetLeft(badge, posX + (cardW / 2.0) - 18);
-                    Canvas.SetTop(badge, posY - 20);
+                    Canvas.SetLeft(glow, posX + cardW * 0.1);
+                    Canvas.SetTop(glow, posY + cardH + 6);
+                    _canvas.Children.Add(glow);
+                    _dynamicElements.Add(glow);
+
+                    // 3) Компактный бейдж оценки под картой
+                    Border badge = new Border
+                    {
+                        Background = new SolidColorBrush(Color.FromArgb(215, 10, 12, 16)),
+                        BorderBrush = new SolidColorBrush(strokeColor),
+                        BorderThickness = new Thickness(1),
+                        CornerRadius = new CornerRadius(6),
+                        Padding = new Thickness(6, 2, 6, 2),
+                        IsHitTestVisible = false
+                    };
+
+                    var badgeText = new TextBlock
+                    {
+                        Text = $"★ {item.Score:0.#}",
+                        FontSize = 10.5,
+                        FontWeight = FontWeights.ExtraBold,
+                        Foreground = new SolidColorBrush(strokeColor)
+                    };
+                    badge.Child = badgeText;
+
+                    Canvas.SetLeft(badge, posX + (cardW / 2.0) - 21);
+                    Canvas.SetTop(badge, posY + cardH + 13);
                     _canvas.Children.Add(badge);
                     _dynamicElements.Add(badge);
                 }
