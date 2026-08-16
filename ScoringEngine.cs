@@ -421,8 +421,9 @@ namespace BGSnowballEngine
         // R1  — апгрейды по стандартной кривой; R5 — плохой шоп → левел;
         // R9  — шоп «слишком хорош» (≥2 карт под сборку) → купить, апгрейд отложить;
         // R10/R14 — низкое здоровье → темп вместо апгрейда (salvation mode);
+        // R15 — при HP ≤ 20 досрочный апгрейд не советуем;
         // R19 — в ранней игре не рероллить; R21 — копя на апгрейд, не тратить на реролл;
-        // R25 — триплет → золотой откроет миньона тира выше.
+        // R25 — триплет → золотой откроет миньона тира выше (приоритет выше всего).
         public ActionAdvice Advise(AdviceContext ctx)
         {
             var advice = new ActionAdvice { Action = "Ждать", Reason = "Конец хода", Priority = 1 };
@@ -444,7 +445,7 @@ namespace BGSnowballEngine
             var best = offers.OrderByDescending(o => o.Score).FirstOrDefault();
 
             bool lowHp = hp > 0 && hp <= 15;          // salvation mode (R14)
-            bool dangerHp = hp > 0 && hp <= 20;       // осторожный режим (R15)
+            bool dangerHp = hp > 0 && hp <= 20;       // осторожный режим (R15): без досрочных апгрейдов
 
             int upgradeTarget = tier + 1;
             bool canUpgrade = upgradeTarget >= 2 && upgradeTarget <= 6 && gold >= UpgradeBaseCost[upgradeTarget];
@@ -455,12 +456,29 @@ namespace BGSnowballEngine
             string buildName = match?.Build?.NameRu;
             bool earlyGame = turn > 0 && turn <= 5;
 
-            // 1) Триплет в таверне — доступ к миньону тира выше (R25, R28)
-            if (triplet != null && canBuy)
+            // 1) Триплет в таверне — доступ к миньону тира выше (R25, R28).
+            // Приоритет выше всего, даже при полной доске: продажа слабого миньона + покупка
+            // (продажа даёт 1 золото, покупка стоит 3 → хватает при gold >= 2).
+            // Реролл/апгрейд при триплете в таверне НИКОГДА не советуем — они уничтожают триплет.
+            if (triplet != null)
             {
-                advice.Action = "Купить триплет";
-                advice.Reason = $"«{triplet.Card?.Name}» — золотой откроет миньона тира выше";
-                advice.Priority = 5;
+                if (canBuy)
+                {
+                    advice.Action = "Купить триплет";
+                    advice.Reason = $"«{triplet.Card?.Name}» — золотой откроет миньона тира выше";
+                    advice.Priority = 5;
+                    return advice;
+                }
+                if (gold >= 2)
+                {
+                    advice.Action = "Продать и купить триплет";
+                    advice.Reason = $"Доска полна: продай слабого миньона и возьми «{triplet.Card?.Name}» — золотой откроет миньона тира выше";
+                    advice.Priority = 5;
+                    return advice;
+                }
+                advice.Action = "Ждать";
+                advice.Reason = "Триплет в таверне — не рероллим, копим 2 золота";
+                advice.Priority = 3;
                 return advice;
             }
 
@@ -468,7 +486,7 @@ namespace BGSnowballEngine
             if (core != null && canBuy)
             {
                 advice.Action = "Купить карту";
-                advice.Reason = $"«{core.Card?.Name}» — {core.Role.ToLower()} сборки «{buildName}»";
+                advice.Reason = $"«{core.Card?.Name}» — {core.Role.ToLower()} сборки «{buildName ?? "текущей"}»";
                 advice.Priority = 5;
                 return advice;
             }
@@ -490,7 +508,7 @@ namespace BGSnowballEngine
                     advice.Priority = 3;
                     return advice;
                 }
-                if (gold >= 3 && turn >= 6)
+                if (gold >= 3 && turn >= 6 && !boardFull)
                 {
                     advice.Action = "Реролл";
                     advice.Reason = "Ищем спасение для стола";
@@ -524,8 +542,9 @@ namespace BGSnowballEngine
             // 5) Апгрейд доступен, но рано по расписанию
             if (canUpgrade)
             {
-                // Шоп плохой → левел раньше срока (3-on-3 / Powerlevel, R5)
-                if (best == null || best.Score < 3.0)
+                // Шоп плохой → левел раньше срока (3-on-3 / Powerlevel, R5);
+                // при осторожном HP (<=20) досрочный апгрейд не советуем — рискуем (R15)
+                if (!dangerHp && (best == null || best.Score < 3.0))
                 {
                     advice.Action = "Апгрейд таверны";
                     advice.Reason = "Шоп слабый — золото лучше вложить в тир";
@@ -542,9 +561,20 @@ namespace BGSnowballEngine
                 if (race != null && canBuy)
                 {
                     advice.Action = "Купить карту";
-                    advice.Reason = $"«{race.Card?.Name}» — раса сборки «{buildName}»";
+                    advice.Reason = $"«{race.Card?.Name}» — раса сборки «{buildName ?? "текущей"}»";
                     advice.Priority = 2;
                     return advice;
+                }
+                if (boardFull && gold >= 2)
+                {
+                    var target = support ?? race;
+                    if (target != null)
+                    {
+                        advice.Action = "Продать и купить";
+                        advice.Reason = $"Продай слабого миньона и возьми «{target.Card?.Name}» ({target.Role.ToLower()})";
+                        advice.Priority = 3;
+                        return advice;
+                    }
                 }
                 advice.Action = "Ждать";
                 advice.Reason = "Копим на апгрейд — не тратим на рероллы";
@@ -567,8 +597,20 @@ namespace BGSnowballEngine
                 advice.Priority = 2;
                 return advice;
             }
-            // Реролл только в мид/лейте (R19: ранний реролл — ловушка)
-            if (gold >= 3 && turn >= 6)
+            // Полная доска, но есть полезная карта — продажа + покупка
+            if (boardFull && gold >= 2)
+            {
+                var target = support ?? race;
+                if (target != null)
+                {
+                    advice.Action = "Продать и купить";
+                    advice.Reason = $"Продай слабого миньона и возьми «{target.Card?.Name}» ({target.Role.ToLower()})";
+                    advice.Priority = 3;
+                    return advice;
+                }
+            }
+            // Реролл только в мид/лейте и при свободном слоте (R19; реролл при полной доске бессмыслен)
+            if (gold >= 3 && turn >= 6 && !boardFull)
             {
                 advice.Action = "Реролл";
                 advice.Reason = hasDirection ? "Ищем карты сборки" : "Ищем направление";
