@@ -29,6 +29,7 @@ namespace BGSnowballEngine
         private TextBlock _buildTitle;
         private TextBlock _buildSubtitle;
         private TextBlock _powerMeter;
+        private TextBlock _adviceText;
 
         public OverlayUI()
         {
@@ -122,10 +123,21 @@ namespace BGSnowballEngine
                     Foreground = Brushes.LimeGreen
                 };
 
+                _adviceText = new TextBlock
+                {
+                    Text = "👉 Ждать: конец хода",
+                    FontSize = 11.5,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = new SolidColorBrush(Color.FromArgb(240, 212, 175, 55)),
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(0, 6, 0, 0)
+                };
+
                 stack.Children.Add(header);
                 stack.Children.Add(_buildTitle);
                 stack.Children.Add(_buildSubtitle);
                 stack.Children.Add(_powerMeter);
+                stack.Children.Add(_adviceText);
 
                 _buildPanel.Child = stack;
 
@@ -154,6 +166,16 @@ namespace BGSnowballEngine
                 _buildSubtitle.Text = summary.Subtitle;
                 _powerMeter.Text = $"⚡ Синергия: {summary.SynergyPower}%";
                 _powerMeter.Foreground = summary.SynergyPower >= 50 ? Brushes.Gold : Brushes.LimeGreen;
+            });
+        }
+
+        public void UpdateAdvice(ActionAdvice advice)
+        {
+            if (_canvas == null || _adviceText == null || advice == null) return;
+
+            _canvas.Dispatcher.Invoke(() =>
+            {
+                _adviceText.Text = $"👉 {advice.Action}: {advice.Reason}";
             });
         }
 
