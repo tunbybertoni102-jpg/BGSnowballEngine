@@ -47,7 +47,10 @@ namespace BGSnowballEngine
                     _matrix = JsonConvert.DeserializeObject<SynergyMatrixData>(json) ?? new SynergyMatrixData();
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Logger.Log(ex);
+            }
         }
 
         public string NormalizeRace(string rawRace)
