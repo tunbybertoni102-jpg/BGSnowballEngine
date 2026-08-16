@@ -15,7 +15,7 @@ namespace BGSnowballEngine
         public string Description => "Эвристический анализатор для Полей Сражений.";
         public string ButtonText => "Настройки";
         public string Author => "AI & User";
-        public Version Version => new Version(1, 1, 0);
+        public Version Version => new Version(1, 2, 0);
 
         public MenuItem MenuItem => null;
 
@@ -148,9 +148,16 @@ namespace BGSnowballEngine
         {
             try
             {
-                int tier = Core.Game.Player.GetTag(GameTag.PLAYER_TECH_LEVEL);
-                int gold = Core.Game.Player.Hero?.GetTag(GameTag.RESOURCES) ?? 0;
-                int health = Core.Game.Player.Health;
+                // API HDT (проверено по исходникам): тир/золото лежат на PlayerEntity и Hero,
+                // здоровье героя = HEALTH - DAMAGE. Player.GetTag / Player.Health НЕ существуют.
+                var playerEntity = Core.Game?.PlayerEntity;
+                var hero = Core.Game?.Player?.Hero;
+
+                int tier = Math.Max(playerEntity?.GetTag(GameTag.PLAYER_TECH_LEVEL) ?? 0,
+                                    hero?.GetTag(GameTag.PLAYER_TECH_LEVEL) ?? 0);
+                int gold = Math.Max(playerEntity?.GetTag(GameTag.RESOURCES) ?? 0,
+                                    hero?.GetTag(GameTag.RESOURCES) ?? 0);
+                int health = Math.Max(0, (hero?.GetTag(GameTag.HEALTH) ?? 0) - (hero?.GetTag(GameTag.DAMAGE) ?? 0));
 
                 return new GameStateSnapshot
                 {

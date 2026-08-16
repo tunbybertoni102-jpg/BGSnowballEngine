@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Shapes;
@@ -25,9 +26,15 @@ namespace BGSnowballEngine
         private double _canvasW;
         private double _canvasH;
 
+        private bool _dragging;
+        private Point _dragStart;
+        private double _panelLeft;
+        private double _panelTop;
+
         private Border _buildPanel;
         private TextBlock _buildTitle;
         private TextBlock _buildSubtitle;
+        private ProgressBar _progressBar;
         private TextBlock _powerMeter;
         private TextBlock _adviceText;
 
@@ -77,7 +84,10 @@ namespace BGSnowballEngine
                     BorderThickness = new Thickness(1.5),
                     CornerRadius = new CornerRadius(8),
                     Padding = new Thickness(10, 8, 10, 8),
-                    IsHitTestVisible = false,
+                    // Hit-test нужен для перетаскивания панели мышью.
+                    // Компромисс: небольшой участок у правого края перехватывает клики.
+                    IsHitTestVisible = true,
+                    Cursor = Cursors.SizeAll,
                     Effect = new DropShadowEffect
                     {
                         Color = Colors.Black,
@@ -86,6 +96,10 @@ namespace BGSnowballEngine
                         Opacity = 0.85
                     }
                 };
+
+                _buildPanel.MouseLeftButtonDown += OnPanelMouseDown;
+                _buildPanel.MouseMove += OnPanelMouseMove;
+                _buildPanel.MouseLeftButtonUp += OnPanelMouseUp;
 
                 var stack = new StackPanel();
 
@@ -112,7 +126,19 @@ namespace BGSnowballEngine
                     Text = "Ожидание карт",
                     FontSize = 11,
                     Foreground = Brushes.WhiteSmoke,
-                    Margin = new Thickness(0, 2, 0, 6)
+                    Margin = new Thickness(0, 2, 0, 4)
+                };
+
+                _progressBar = new ProgressBar
+                {
+                    Minimum = 0,
+                    Maximum = 100,
+                    Value = 0,
+                    Height = 4,
+                    Foreground = new SolidColorBrush(Color.FromRgb(0xD4, 0xAF, 0x37)),
+                    Background = new SolidColorBrush(Color.FromArgb(90, 255, 255, 255)),
+                    BorderThickness = new Thickness(0),
+                    Margin = new Thickness(0, 0, 0, 4)
                 };
 
                 _powerMeter = new TextBlock
@@ -136,6 +162,7 @@ namespace BGSnowballEngine
                 stack.Children.Add(header);
                 stack.Children.Add(_buildTitle);
                 stack.Children.Add(_buildSubtitle);
+                stack.Children.Add(_progressBar);
                 stack.Children.Add(_powerMeter);
                 stack.Children.Add(_adviceText);
 
@@ -155,6 +182,34 @@ namespace BGSnowballEngine
             Canvas.SetTop(_buildPanel, screenH * 0.22);
         }
 
+        private void OnPanelMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            _dragging = true;
+            _dragStart = e.GetPosition(_canvas);
+            _panelLeft = Canvas.GetLeft(_buildPanel);
+            _panelTop = Canvas.GetTop(_buildPanel);
+            _buildPanel.CaptureMouse();
+            e.Handled = true;
+        }
+
+        private void OnPanelMouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_dragging || _buildPanel == null) return;
+
+            var pos = e.GetPosition(_canvas);
+            double newLeft = Math.Max(0, Math.Min(_panelLeft + (pos.X - _dragStart.X), GetCanvasWidth() - _buildPanel.Width - 8));
+            double newTop = Math.Max(0, Math.Min(_panelTop + (pos.Y - _dragStart.Y), GetCanvasHeight() - 60));
+
+            Canvas.SetLeft(_buildPanel, newLeft);
+            Canvas.SetTop(_buildPanel, newTop);
+        }
+
+        private void OnPanelMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            _dragging = false;
+            _buildPanel?.ReleaseMouseCapture();
+        }
+
         public void UpdateBuildStatus(ArchetypeSummary summary)
         {
             if (_canvas == null || _buildPanel == null) return;
@@ -164,6 +219,7 @@ namespace BGSnowballEngine
                 UpdatePanelPosition();
                 _buildTitle.Text = summary.Name;
                 _buildSubtitle.Text = summary.Subtitle;
+                _progressBar.Value = Math.Max(0, Math.Min(100, summary.SynergyPower));
                 _powerMeter.Text = $"⚡ Синергия: {summary.SynergyPower}%";
                 _powerMeter.Foreground = summary.SynergyPower >= 50 ? Brushes.Gold : Brushes.LimeGreen;
             });
