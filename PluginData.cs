@@ -12,10 +12,10 @@ namespace BGSnowballEngine
     public class PluginData : IPlugin
     {
         public string Name => "Battlegrounds Snowball Engine";
-        public string Description => "Эвристический анализатор для Полей Сражений.";
+        public string Description => "Советник для Полей Сражений: сборка, экономика, покупка vs апгрейд таверны.";
         public string ButtonText => "Настройки";
         public string Author => "AI & User";
-        public Version Version => new Version(1, 2, 1);
+        public Version Version => new Version(1, 3, 0);
 
         public MenuItem MenuItem => null;
 
@@ -62,7 +62,6 @@ namespace BGSnowballEngine
                 if (!Core.Game.IsBattlegroundsMatch && Core.Game.Opponent?.Name != "Бармен Боб" && Core.Game.Opponent?.Name != "Bartender Bob")
                 {
                     _lastSignature = string.Empty;
-                    _overlay?.ClearHighlights();
                     _overlay?.SetVisible(false);
                     return;
                 }
@@ -76,71 +75,50 @@ namespace BGSnowballEngine
                     .OrderBy(e => e.GetTag(GameTag.ZONE_POSITION))
                     .ToList();
 
-                // Пересчёт только при реальном изменении состояния (доска/таверна)
+                var state = CaptureGameState();
+                state.BoardSize = boardCards.Count;
+
+                // Пересчёт только при реальном изменении состояния
+                // (доска / таверна / золото / тир / здоровье / ход)
                 string signature = BuildStateSignature(
                     boardCards.Select(c => c.Id),
-                    tavernEntities != null ? tavernEntities.Select(e => e.Card.Id) : Enumerable.Empty<string>());
+                    tavernEntities != null ? tavernEntities.Select(e => e.Card.Id) : Enumerable.Empty<string>(),
+                    state);
                 if (signature == _lastSignature) return;
                 _lastSignature = signature;
 
-                var scoredSlots = new List<ScoredSlot>();
-                bool tavernHasTriplet = false;
+                if (_engine == null || _overlay == null) return;
 
-                // 1. Всегда обновляем плашку сборки
-                if (_engine != null && _overlay != null)
+                // Панель советника показываем только в партии (тир > 0)
+                _overlay.SetVisible(state.TavernTier > 0);
+
+                // 1. Сборка и направление
+                var buildSummary = _engine.AnalyzeBuild(boardCards);
+
+                // 2. Оценка предложений таверны: лучшая карта, роли, триплеты
+                var offers = new List<TavernOffer>();
+                if (tavernEntities != null && tavernEntities.Count > 0)
                 {
-                    var buildSummary = _engine.AnalyzeBuild(boardCards);
-                    _overlay.UpdateBuildStatus(buildSummary);
+                    offers = _engine.EvaluateTavernOffers(tavernEntities.Select(e => e.Card), boardCards);
                 }
 
-                // 2. Подсветка карт в таверне
-                if (tavernEntities != null && tavernEntities.Count > 0 && _engine != null && _overlay != null)
+                // 3. Совет: покупка vs апгрейд таверны по ситуации
+                var advice = _engine.Advise(new AdviceContext
                 {
-                    int totalCount = tavernEntities.Count;
+                    State = state,
+                    Board = boardCards,
+                    Tavern = offers
+                });
 
-                    for (int i = 0; i < totalCount; i++)
-                    {
-                        var entity = tavernEntities[i];
-                        var singleList = new List<Card> { entity.Card };
-
-                        var scoreDict = _engine.EvaluateTavern(singleList, boardCards);
-                        double score = scoreDict.ContainsKey(entity.Card) ? scoreDict[entity.Card] : 1.0;
-
-                        // Золотой триплет или точное совпадение
-                        if (boardCards.Count(c => c.Id == entity.Card.Id) == 2)
-                        {
-                            score += 10.0;
-                            tavernHasTriplet = true;
-                        }
-
-                        scoredSlots.Add(new ScoredSlot
-                        {
-                            SlotIndex = i,
-                            TotalSlots = totalCount,
-                            Score = score
-                        });
-                    }
-
-                    _overlay.UpdateTavernHighlights(scoredSlots);
-                }
-                else
+                // 4. Единая перерисовка панели
+                _overlay.UpdatePanel(new PanelUpdate
                 {
-                    _overlay?.ClearHighlights();
-                }
-
-                // 3. Подсказка действия (тир / золото / здоровье / таверна)
-                if (_engine != null && _overlay != null)
-                {
-                    var state = CaptureGameState();
-                    state.BoardSize = boardCards.Count;
-
-                    // Панель советника показываем только в партии (тир > 0)
-                    _overlay.SetVisible(state.TavernTier > 0);
-
-                    double bestScore = scoredSlots.Count > 0 ? scoredSlots.Max(s => s.Score) : 1.0;
-                    var advice = _engine.Advise(state, boardCards, bestScore, tavernHasTriplet);
-                    _overlay.UpdateAdvice(advice);
-                }
+                    Summary = buildSummary,
+                    State = state,
+                    Advice = advice,
+                    BestOffer = offers.FirstOrDefault(),
+                    GoalText = _engine.GetNextGoal(boardCards)
+                });
             }
             catch (Exception ex)
             {
@@ -166,11 +144,22 @@ namespace BGSnowballEngine
                                          + (hero?.GetTag(GameTag.ARMOR) ?? 0)
                                          - (hero?.GetTag(GameTag.DAMAGE) ?? 0));
 
+                int turn = 0;
+                try
+                {
+                    turn = Core.Game?.GetTurnNumber() ?? 0;
+                }
+                catch
+                {
+                    // В редких состояниях (меню/переходы) номер хода может быть недоступен — оставляем 0
+                }
+
                 return new GameStateSnapshot
                 {
                     TavernTier = tier,
                     Gold = gold,
-                    Health = health
+                    Health = health,
+                    Turn = turn
                 };
             }
             catch (Exception ex)
@@ -180,12 +169,16 @@ namespace BGSnowballEngine
             }
         }
 
-        private static string BuildStateSignature(IEnumerable<string> boardIds, IEnumerable<string> tavernIds)
+        private static string BuildStateSignature(IEnumerable<string> boardIds, IEnumerable<string> tavernIds, GameStateSnapshot state)
         {
             var sb = new System.Text.StringBuilder();
             foreach (var id in boardIds.OrderBy(x => x)) sb.Append(id).Append(',');
             sb.Append('|');
             foreach (var id in tavernIds) sb.Append(id).Append(',');
+            sb.Append('|').Append(state.TavernTier).Append(',');
+            sb.Append(state.Gold).Append(',');
+            sb.Append(state.Health).Append(',');
+            sb.Append(state.Turn);
             return sb.ToString();
         }
     }

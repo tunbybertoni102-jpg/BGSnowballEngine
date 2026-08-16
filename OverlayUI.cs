@@ -1,29 +1,29 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
-using System.Windows.Shapes;
 using Hearthstone_Deck_Tracker.API;
 using Hearthstone_Deck_Tracker.Utility.Extensions;
+using Newtonsoft.Json;
 
 namespace BGSnowballEngine
 {
-    public class ScoredSlot
+    /// <summary>Единый снимок для отрисовки панели (одна перерисовка за апдейт).</summary>
+    public class PanelUpdate
     {
-        public int SlotIndex { get; set; }
-        public int TotalSlots { get; set; }
-        public double Score { get; set; }
+        public ArchetypeSummary Summary { get; set; }
+        public GameStateSnapshot State { get; set; }
+        public ActionAdvice Advice { get; set; }
+        public TavernOffer BestOffer { get; set; }
+        public string GoalText { get; set; } = "";
     }
 
     public class OverlayUI
     {
         private Canvas _canvas;
-        private List<UIElement> _dynamicElements = new List<UIElement>();
-
         private double _canvasW;
         private double _canvasH;
 
@@ -36,16 +36,29 @@ namespace BGSnowballEngine
         private TextBlock _buildTitle;
         private TextBlock _buildSubtitle;
         private ProgressBar _progressBar;
-        private TextBlock _powerMeter;
+        private TextBlock _economyText;
+        private TextBlock _bestCardText;
+        private TextBlock _goalText;
         private TextBlock _adviceText;
+
+        private readonly string _configPath;
+
+        private class PanelPosition
+        {
+            public double Left { get; set; }
+            public double Top { get; set; }
+        }
 
         public OverlayUI()
         {
+            // Конфиг позиции панели — как у HDT: позиция переживает перезапуск
+            _configPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "BGSnowballEngine", "config.json");
+
             _canvas = Core.OverlayCanvas;
             if (_canvas != null)
             {
-                // Отслеживаем реальный размер канваса: координаты подсветки
-                // должны совпадать с окном игры, а не с размером экрана
                 _canvas.SizeChanged += OnCanvasSizeChanged;
             }
             InitRightSidePanel();
@@ -71,25 +84,59 @@ namespace BGSnowballEngine
                 : SystemParameters.PrimaryScreenHeight;
         }
 
+        private PanelPosition LoadPosition()
+        {
+            try
+            {
+                if (File.Exists(_configPath))
+                {
+                    return JsonConvert.DeserializeObject<PanelPosition>(File.ReadAllText(_configPath));
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(ex);
+            }
+            return null;
+        }
+
+        private void SavePosition()
+        {
+            try
+            {
+                if (_buildPanel == null) return;
+
+                double left = Canvas.GetLeft(_buildPanel);
+                double top = Canvas.GetTop(_buildPanel);
+                if (double.IsNaN(left) || double.IsNaN(top)) return;
+
+                string dir = Path.GetDirectoryName(_configPath);
+                if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+
+                File.WriteAllText(_configPath, JsonConvert.SerializeObject(new PanelPosition { Left = left, Top = top }));
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(ex);
+            }
+        }
+
         private void InitRightSidePanel()
         {
             if (_canvas == null) return;
 
             _canvas.Dispatcher.Invoke(() =>
             {
-                // Защита от повторной инициализации (перезапуск игры/реконфигурация)
                 if (_buildPanel != null) return;
 
                 _buildPanel = new Border
                 {
-                    Width = 200,
-                    Background = new SolidColorBrush(Color.FromArgb(225, 12, 16, 22)),
+                    Width = 232,
+                    Background = new SolidColorBrush(Color.FromArgb(228, 12, 16, 22)),
                     BorderBrush = new SolidColorBrush(Color.FromArgb(220, 212, 175, 55)),
                     BorderThickness = new Thickness(1.5),
                     CornerRadius = new CornerRadius(8),
                     Padding = new Thickness(10, 8, 10, 8),
-                    // WPF hit-test внутри окна; клик-сквозной режим самого окна HDT
-                    // снимается регистрацией через SetIsOverlayHitTestVisible (ниже)
                     IsHitTestVisible = true,
                     Cursor = Cursors.SizeAll,
                     Effect = new DropShadowEffect
@@ -101,12 +148,9 @@ namespace BGSnowballEngine
                     }
                 };
 
-                // КЛЮЧЕВОЕ: окно оверлея HDT постоянно клик-сквозное (WS_EX_TRANSPARENT).
-                // Регистрация панели как интерактивной заставляет HDT снимать
-                // клик-сквозной режим при наведении курсора (UpdateHoverable, 60 Гц).
+                // Интерактивность панели: HDT снимает клик-сквозной режим при наведении
                 OverlayExtensions.SetIsOverlayHitTestVisible(_buildPanel, true);
 
-                // Отписка перед подпиской — защита от двойных обработчиков при реините
                 _buildPanel.MouseLeftButtonDown -= OnPanelMouseDown;
                 _buildPanel.MouseLeftButtonDown += OnPanelMouseDown;
                 _buildPanel.MouseMove -= OnPanelMouseMove;
@@ -120,7 +164,7 @@ namespace BGSnowballEngine
 
                 var header = new TextBlock
                 {
-                    Text = "🎯 ТЕКУЩАЯ СБОРКА",
+                    Text = "🎯 СОВЕТНИК",
                     FontSize = 10,
                     FontWeight = FontWeights.Bold,
                     Foreground = new SolidColorBrush(Color.FromArgb(200, 200, 200, 200)),
@@ -156,12 +200,30 @@ namespace BGSnowballEngine
                     Margin = new Thickness(0, 0, 0, 4)
                 };
 
-                _powerMeter = new TextBlock
+                _economyText = new TextBlock
                 {
-                    Text = "⚡ Синергия: 0%",
+                    Text = "💰 0 · Тир 0 · ❤️ 0",
                     FontSize = 11,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = Brushes.LimeGreen
+                    Foreground = Brushes.LightSteelBlue,
+                    Margin = new Thickness(0, 2, 0, 2)
+                };
+
+                _bestCardText = new TextBlock
+                {
+                    Text = "🛒 Лучшая карта: —",
+                    FontSize = 11,
+                    Foreground = Brushes.WhiteSmoke,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    Margin = new Thickness(0, 0, 0, 2)
+                };
+
+                _goalText = new TextBlock
+                {
+                    Text = "Цель: —",
+                    FontSize = 11,
+                    Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0xD8, 0xFF)),
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    Margin = new Thickness(0, 0, 0, 4)
                 };
 
                 _adviceText = new TextBlock
@@ -171,19 +233,32 @@ namespace BGSnowballEngine
                     FontWeight = FontWeights.Bold,
                     Foreground = new SolidColorBrush(Color.FromArgb(240, 212, 175, 55)),
                     TextWrapping = TextWrapping.Wrap,
-                    Margin = new Thickness(0, 6, 0, 0)
+                    Margin = new Thickness(0, 4, 0, 0)
                 };
 
                 stack.Children.Add(header);
                 stack.Children.Add(_buildTitle);
                 stack.Children.Add(_buildSubtitle);
                 stack.Children.Add(_progressBar);
-                stack.Children.Add(_powerMeter);
+                stack.Children.Add(_economyText);
+                stack.Children.Add(_bestCardText);
+                stack.Children.Add(_goalText);
                 stack.Children.Add(_adviceText);
 
                 _buildPanel.Child = stack;
 
-                UpdatePanelPosition();
+                // Восстанавливаем сохранённую позицию (как в HDT), иначе — правый край
+                var saved = LoadPosition();
+                if (saved != null && saved.Left > 0 && saved.Top > 0)
+                {
+                    Canvas.SetLeft(_buildPanel, saved.Left);
+                    Canvas.SetTop(_buildPanel, saved.Top);
+                }
+                else
+                {
+                    UpdatePanelPosition();
+                }
+
                 _canvas.Children.Add(_buildPanel);
             });
         }
@@ -193,14 +268,10 @@ namespace BGSnowballEngine
             double screenW = GetCanvasWidth();
             double screenH = GetCanvasHeight();
 
-            Canvas.SetLeft(_buildPanel, screenW - 225);
+            Canvas.SetLeft(_buildPanel, screenW - 257);
             Canvas.SetTop(_buildPanel, screenH * 0.22);
         }
 
-        /// <summary>
-        /// Не сбрасываем позицию при каждом обновлении (панель перетаскивается!),
-        /// а только возвращаем её в границы канваса, если та вышла за них.
-        /// </summary>
         private void ClampPanelToBounds()
         {
             if (_buildPanel == null) return;
@@ -226,7 +297,6 @@ namespace BGSnowballEngine
             _dragging = true;
             _dragStart = e.GetPosition(_canvas);
 
-            // Canvas.GetLeft/GetTop возвращают NaN, если позиция ещё не задана
             double curLeft = Canvas.GetLeft(_buildPanel);
             double curTop = Canvas.GetTop(_buildPanel);
             _panelLeft = double.IsNaN(curLeft) ? 0 : curLeft;
@@ -242,7 +312,6 @@ namespace BGSnowballEngine
 
             var pos = e.GetPosition(_canvas);
 
-            // ActualWidth/Height вместо Width: у auto-элементов Width == NaN
             double panelW = _buildPanel.ActualWidth > 0 ? _buildPanel.ActualWidth : _buildPanel.Width;
             double panelH = _buildPanel.ActualHeight > 0 ? _buildPanel.ActualHeight : _buildPanel.Height;
             double maxX = Math.Max(0, GetCanvasWidth() - panelW - 8);
@@ -258,17 +327,16 @@ namespace BGSnowballEngine
 
         private void OnPanelMouseUp(object sender, MouseButtonEventArgs e)
         {
-            // Без этой проверки «лишний» MouseUp (после потери захвата) сбросит чужой драг
             if (!_dragging) return;
 
             _dragging = false;
             _buildPanel?.ReleaseMouseCapture();
+            SavePosition();
             e.Handled = true;
         }
 
         private void OnPanelLostMouseCapture(object sender, MouseEventArgs e)
         {
-            // Alt-Tab, скрытие оверлея и т.п. — иначе панель «поедет» без зажатой кнопки
             _dragging = false;
         }
 
@@ -283,139 +351,44 @@ namespace BGSnowballEngine
             });
         }
 
-        public void UpdateBuildStatus(ArchetypeSummary summary)
+        /// <summary>Единая перерисовка панели: сборка, экономика, лучшая карта, цель, совет.</summary>
+        public void UpdatePanel(PanelUpdate update)
         {
             if (_canvas == null || _buildPanel == null) return;
 
             _canvas.Dispatcher.Invoke(() =>
             {
                 ClampPanelToBounds();
-                _buildTitle.Text = summary.Name;
-                _buildSubtitle.Text = summary.Subtitle;
-                _progressBar.Value = Math.Max(0, Math.Min(100, summary.SynergyPower));
-                _powerMeter.Text = $"⚡ Синергия: {summary.SynergyPower}%";
-                _powerMeter.Foreground = summary.SynergyPower >= 50 ? Brushes.Gold : Brushes.LimeGreen;
-            });
-        }
 
-        public void UpdateAdvice(ActionAdvice advice)
-        {
-            if (_canvas == null || _adviceText == null || advice == null) return;
-
-            _canvas.Dispatcher.Invoke(() =>
-            {
-                _adviceText.Text = $"👉 {advice.Action}: {advice.Reason}";
-            });
-        }
-
-        public void UpdateTavernHighlights(List<ScoredSlot> items)
-        {
-            if (_canvas == null) return;
-
-            _canvas.Dispatcher.Invoke(() =>
-            {
-                ClearHighlights();
-
-                if (items == null || items.Count == 0) return;
-
-                // Подсвечиваем карты со скором >= 2.0
-                var targets = items.Where(x => x.Score >= 2.0).ToList();
-                if (targets.Count == 0) return;
-
-                double screenW = GetCanvasWidth();
-                double screenH = GetCanvasHeight();
-
-                // Геометрия слотов таверны (до 7 слотов, центрирование)
-                double cardW = screenW * 0.078;
-                double cardH = screenH * 0.126;
-                double stepX = screenW * 0.0935;
-                double tavernY = screenH * 0.290;
-                double centerX = screenW / 2.0;
-
-                foreach (var item in targets)
+                if (update.Summary != null)
                 {
-                    double offsetFromCenter = (item.SlotIndex - ((item.TotalSlots - 1) / 2.0)) * stepX;
-                    double posX = centerX + offsetFromCenter - (cardW / 2.0);
-                    double posY = tavernY - (cardH / 2.0);
-
-                    bool isHighPriority = item.Score >= 5.0;
-                    Color strokeColor = isHighPriority
-                        ? Color.FromRgb(0xD4, 0xAF, 0x37) // золото
-                        : Color.FromRgb(0x4A, 0xDE, 0x80); // зелёный
-
-                    // 1) Тонкий контур строго по границе карты — арт карты остаётся видимым
-                    Rectangle contour = new Rectangle
-                    {
-                        Width = cardW,
-                        Height = cardH,
-                        Stroke = new SolidColorBrush(strokeColor),
-                        StrokeThickness = 2.5,
-                        RadiusX = 14,
-                        RadiusY = 14,
-                        Fill = new SolidColorBrush(Color.FromArgb(24, 255, 255, 255)),
-                        IsHitTestVisible = false
-                    };
-
-                    Canvas.SetLeft(contour, posX);
-                    Canvas.SetTop(contour, posY);
-                    _canvas.Children.Add(contour);
-                    _dynamicElements.Add(contour);
-
-                    // 2) Мягкая линия-свечение под картой (ничего не перекрывает)
-                    Rectangle glow = new Rectangle
-                    {
-                        Width = cardW * 0.8,
-                        Height = 4,
-                        RadiusX = 2,
-                        RadiusY = 2,
-                        Fill = new SolidColorBrush(Color.FromArgb(210, strokeColor.R, strokeColor.G, strokeColor.B)),
-                        IsHitTestVisible = false
-                    };
-
-                    Canvas.SetLeft(glow, posX + cardW * 0.1);
-                    Canvas.SetTop(glow, posY + cardH + 6);
-                    _canvas.Children.Add(glow);
-                    _dynamicElements.Add(glow);
-
-                    // 3) Компактный бейдж оценки под картой
-                    Border badge = new Border
-                    {
-                        Background = new SolidColorBrush(Color.FromArgb(215, 10, 12, 16)),
-                        BorderBrush = new SolidColorBrush(strokeColor),
-                        BorderThickness = new Thickness(1),
-                        CornerRadius = new CornerRadius(6),
-                        Padding = new Thickness(6, 2, 6, 2),
-                        IsHitTestVisible = false
-                    };
-
-                    var badgeText = new TextBlock
-                    {
-                        Text = $"★ {item.Score:0.#}",
-                        FontSize = 10.5,
-                        FontWeight = FontWeights.ExtraBold,
-                        Foreground = new SolidColorBrush(strokeColor)
-                    };
-                    badge.Child = badgeText;
-
-                    Canvas.SetLeft(badge, posX + (cardW / 2.0) - 21);
-                    Canvas.SetTop(badge, posY + cardH + 13);
-                    _canvas.Children.Add(badge);
-                    _dynamicElements.Add(badge);
+                    _buildTitle.Text = update.Summary.Name;
+                    _buildSubtitle.Text = update.Summary.Subtitle;
+                    _progressBar.Value = Math.Max(0, Math.Min(100, update.Summary.SynergyPower));
                 }
-            });
-        }
 
-        public void ClearHighlights()
-        {
-            if (_canvas == null) return;
-
-            _canvas.Dispatcher.Invoke(() =>
-            {
-                foreach (var el in _dynamicElements)
+                if (update.State != null)
                 {
-                    _canvas.Children.Remove(el);
+                    string turn = update.State.Turn > 0 ? $" · Ход {update.State.Turn}" : "";
+                    _economyText.Text = $"💰 {update.State.Gold} 🪙 · Тир {update.State.TavernTier} · ❤️ {update.State.Health}{turn}";
                 }
-                _dynamicElements.Clear();
+
+                if (update.BestOffer != null && update.BestOffer.Card != null)
+                {
+                    string triple = update.BestOffer.IsTriplet ? " (триплет!)" : "";
+                    _bestCardText.Text = $"🛒 {update.BestOffer.Card.Name} ★{update.BestOffer.Score:0.#}{triple}";
+                }
+                else
+                {
+                    _bestCardText.Text = "🛒 Лучшая карта: —";
+                }
+
+                _goalText.Text = string.IsNullOrEmpty(update.GoalText) ? "Цель: —" : $"Цель: {update.GoalText}";
+
+                if (update.Advice != null)
+                {
+                    _adviceText.Text = $"👉 {update.Advice.Action}: {update.Advice.Reason}";
+                }
             });
         }
 
@@ -425,10 +398,8 @@ namespace BGSnowballEngine
 
             _canvas.Dispatcher.Invoke(() =>
             {
-                ClearHighlights();
                 if (_buildPanel != null)
                 {
-                    // Снимаем регистрацию интерактивности, чтобы HDT не держал ссылку
                     OverlayExtensions.SetIsOverlayHitTestVisible(_buildPanel, false);
                     _canvas.Children.Remove(_buildPanel);
                     _buildPanel = null;
