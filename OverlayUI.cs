@@ -247,9 +247,10 @@ namespace BGSnowballEngine
 
                 _buildPanel.Child = stack;
 
-                // Восстанавливаем сохранённую позицию (как в HDT), иначе — правый край
+                // Восстанавливаем сохранённую позицию (как в HDT), иначе — правый край.
+                // (0,0) — валидная позиция (левый верхний угол): проверяем только NaN.
                 var saved = LoadPosition();
-                if (saved != null && saved.Left > 0 && saved.Top > 0)
+                if (saved != null && !double.IsNaN(saved.Left) && !double.IsNaN(saved.Top))
                 {
                     Canvas.SetLeft(_buildPanel, saved.Left);
                     Canvas.SetTop(_buildPanel, saved.Top);
@@ -396,15 +397,23 @@ namespace BGSnowballEngine
         {
             if (_canvas == null) return;
 
-            _canvas.Dispatcher.Invoke(() =>
+            try
             {
-                if (_buildPanel != null)
+                _canvas.Dispatcher.Invoke(() =>
                 {
-                    OverlayExtensions.SetIsOverlayHitTestVisible(_buildPanel, false);
-                    _canvas.Children.Remove(_buildPanel);
-                    _buildPanel = null;
-                }
-            });
+                    if (_buildPanel != null)
+                    {
+                        OverlayExtensions.SetIsOverlayHitTestVisible(_buildPanel, false);
+                        _canvas.Children.Remove(_buildPanel);
+                        _buildPanel = null;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                // При выгрузке плагина во время завершения HDT dispatcher может быть закрыт
+                Logger.Log(ex);
+            }
         }
     }
 }
