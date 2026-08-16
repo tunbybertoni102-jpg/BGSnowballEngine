@@ -16,8 +16,12 @@ namespace BGSnowballEngine
         public string ButtonText => "Настройки";
         public string Author => "AI & User";
         public Version Version => new Version(1, 0, 0);
-        
+
         public MenuItem MenuItem => null;
+
+        private const int UpdateIntervalMs = 300;
+        private DateTime _lastUpdateUtc = DateTime.MinValue;
+        private string _lastSignature = string.Empty;
 
         private EngineCore _engine;
         private OverlayUI _overlay;
@@ -28,7 +32,7 @@ namespace BGSnowballEngine
             _engine.Initialize();
 
             _overlay = new OverlayUI();
-            
+
             GameEvents.OnTurnStart.Add(player => AnalyzeAndDraw());
         }
 
@@ -41,6 +45,10 @@ namespace BGSnowballEngine
 
         public void OnUpdate()
         {
+            // Троттлинг: не дёргаем анализ и перерисовку каждый тик HDT
+            if ((DateTime.UtcNow - _lastUpdateUtc).TotalMilliseconds < UpdateIntervalMs) return;
+            _lastUpdateUtc = DateTime.UtcNow;
+
             AnalyzeAndDraw();
         }
 
@@ -53,12 +61,26 @@ namespace BGSnowballEngine
                 // Проверка наличия матча
                 if (!Core.Game.IsBattlegroundsMatch && Core.Game.Opponent?.Name != "Бармен Боб" && Core.Game.Opponent?.Name != "Bartender Bob")
                 {
+                    _lastSignature = string.Empty;
                     _overlay?.ClearHighlights();
                     return;
                 }
 
                 var playerEntities = Core.Game.Player.Board?.Where(e => e != null && e.Card != null && e.IsMinion).ToList();
                 var boardCards = playerEntities != null ? playerEntities.Select(e => e.Card).ToList() : new List<Card>();
+
+                // Существа таверны, отсортированные строго слева направо
+                var tavernEntities = Core.Game.Opponent?.Board?
+                    .Where(e => e != null && e.Card != null && e.IsMinion && e.IsInPlay)
+                    .OrderBy(e => e.GetTag(GameTag.ZONE_POSITION))
+                    .ToList();
+
+                // Пересчёт только при реальном изменении состояния (доска/таверна)
+                string signature = BuildStateSignature(
+                    boardCards.Select(c => c.Id),
+                    tavernEntities != null ? tavernEntities.Select(e => e.Card.Id) : Enumerable.Empty<string>());
+                if (signature == _lastSignature) return;
+                _lastSignature = signature;
 
                 // 1. Всегда обновляем плашку сборки
                 if (_engine != null && _overlay != null)
@@ -67,12 +89,7 @@ namespace BGSnowballEngine
                     _overlay.UpdateBuildStatus(buildSummary);
                 }
 
-                // 2. Получаем существ в таверне и сортируем строго слева направо
-                var tavernEntities = Core.Game.Opponent?.Board?
-                    .Where(e => e != null && e.Card != null && e.IsMinion && e.IsInPlay)
-                    .OrderBy(e => e.GetTag(GameTag.ZONE_POSITION))
-                    .ToList();
-
+                // 2. Подсветка карт в таверне
                 if (tavernEntities != null && tavernEntities.Count > 0 && _engine != null && _overlay != null)
                 {
                     var scoredSlots = new List<ScoredSlot>();
@@ -82,7 +99,7 @@ namespace BGSnowballEngine
                     {
                         var entity = tavernEntities[i];
                         var singleList = new List<Card> { entity.Card };
-                        
+
                         var scoreDict = _engine.EvaluateTavern(singleList, boardCards);
                         double score = scoreDict.ContainsKey(entity.Card) ? scoreDict[entity.Card] : 1.0;
 
@@ -107,7 +124,19 @@ namespace BGSnowballEngine
                     _overlay?.ClearHighlights();
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Logger.Log(ex);
+            }
+        }
+
+        private static string BuildStateSignature(IEnumerable<string> boardIds, IEnumerable<string> tavernIds)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var id in boardIds.OrderBy(x => x)) sb.Append(id).Append(',');
+            sb.Append('|');
+            foreach (var id in tavernIds) sb.Append(id).Append(',');
+            return sb.ToString();
         }
     }
 }
