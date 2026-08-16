@@ -1,0 +1,348 @@
+{
+  "meta": {
+    "patch": "36.2",
+    "hotfix": "36.2.1",
+    "season": 14,
+    "seasonName": "Dark Gifts of Dalaran",
+    "updatedAt": "2026-08-16",
+    "sources": [
+      "Blizzard 36.2 Patch Notes (news.blizzard.com/article/24290432)",
+      "HSReplay Tier7 comp list (JeefHS), обновлено 15.08.2026",
+      "hearthpwn 36.2 Patch Notes / Season 14",
+      "hsbg.cards patch-notes 36.2",
+      "Blizzard Developer Insight: Dark Gifts"
+    ],
+    "status": "draft_v2 — схема под движок советника; пул карт требует сверки с актуальным клиентом"
+  },
+
+  "gameSystems": {
+    "darkGifts": {
+      "enabled": true,
+      "startTurn": 3,
+      "cost": 3,
+      "maxPerGame": 3,
+      "giftCount": 43,
+      "note": "Кнопка раз в ход. У каждого дара своё окно ходов (min/max), скорректировано в 36.2.1. Ранние дары = ключевые слова/статы, поздние = перманентный скейлинг, копии миньонов и т.п."
+    },
+    "activate": {
+      "enabled": true,
+      "note": "Новое ключевое слово: миньон тратит золото в фазе найма, чтобы активировать повторяемую способность."
+    },
+    "fishbait": {
+      "enabled": true,
+      "note": "Миньоны с Fishbait могут атаковать в фазе найма. Venomous переработан: уничтожает первого задетого миньона за бой."
+    },
+    "trinkets": {
+      "enabled": true,
+      "note": "Расширенный пул тринкетов — активная механика сезона."
+    },
+    "tavernTiers": 7,
+    "chromadrake": "removed_from_pool",
+    "statsFormat": "easy-to-read: числа больше 4 знаков сокращаются (1.2M)"
+  },
+
+  "tribePower": [
+    { "tribe": "Undead", "rank": "S" },
+    { "tribe": "Demon", "rank": "S" },
+    { "tribe": "Murloc", "rank": "A" },
+    { "tribe": "Elemental", "rank": "A" },
+    { "tribe": "Beast", "rank": "A" },
+    { "tribe": "Pirate", "rank": "A" },
+    { "tribe": "Quilboar", "rank": "A" },
+    { "tribe": "Mech", "rank": "B" },
+    { "tribe": "Naga", "rank": "B" }
+  ],
+
+  "builds": [
+    {
+      "id": "beasts_tasty_lobstah",
+      "nameRu": "Звери: Обед из лобстера",
+      "nameEn": "Tasty Lobster Beasts",
+      "tier": "S",
+      "race": "Beast",
+      "anchor": "Tasty Lobster (Tasty Lobstah)",
+      "playstyle": "Триггерим хрипы, чтобы скейлить статы. Классика: Titus Rivendare / Drakkari Enchanter + генерация токенов.",
+      "tags": ["Deathrattle", "Token_Beasts", "Deathrattle_Trigger_x2", "EndOfTurn_Multiplier"],
+      "coreCards": ["Tasty Lobster", "Titus Rivendare", "Drakkari Enchanter"],
+      "supportCards": ["Goldrinn, the Great Wolf", "Hawkstrider Herald", "Ghoul-acabra", "Banana Slamma"],
+      "keySpells": [],
+      "priority": 1
+    },
+    {
+      "id": "pirates_apm_golden",
+      "nameRu": "Пираты: APM Golden",
+      "nameEn": "Enterprising Escapee Pirates",
+      "tier": "S",
+      "race": "Pirate",
+      "anchor": "Enterprising Escapee",
+      "playstyle": "Бесконечные деньги: генерация золота + прокрутка таверны, скейл пиратов за каждую продажу/покупку.",
+      "tags": ["APM_Cycle", "Pirate_Gold_Engine", "Pirate", "Card_Draw_Pirate"],
+      "coreCards": ["Enterprising Escapee"],
+      "supportCards": ["Fleet Admiral Tethys", "Peggy Sturdybone", "Underhanded Dealer"],
+      "keySpells": [],
+      "priority": 2
+    },
+    {
+      "id": "demons_shop_buff",
+      "nameRu": "Демоны: бафф магазина",
+      "nameEn": "Ashen Corruptor Demons",
+      "tier": "S",
+      "race": "Demon",
+      "anchor": "Ashen Corruptor",
+      "playstyle": "Скейлимся, поедая магазин: демоны потребляют существа таверны, заклинание Methodical Madness раздаёт ключевые слова (Divine Shield / Venomous) всем демонам.",
+      "tags": ["Tavern_Consume", "Self_Damage", "Demon", "Shop_Buff"],
+      "coreCards": ["Ashen Corruptor"],
+      "supportCards": ["Famished Felbat", "Malchezaar, Prince of Dance", "Soul Rewinder", "Tichondrius"],
+      "keySpells": ["Methodical Madness"],
+      "priority": 3
+    },
+    {
+      "id": "undead_attack_scaling",
+      "nameRu": "Нежить: скейл атаки",
+      "nameEn": "Deathly Striker Undead",
+      "tier": "S",
+      "race": "Undead",
+      "anchor": "Deathly Striker",
+      "playstyle": "Огромная атака у нежити: призыв существ с высокой атакой, скалирование атаки через хрипы и повторные призывы.",
+      "tags": ["Undead_Attack", "Reborn", "Deathrattle", "Attack_Scaling"],
+      "coreCards": ["Deathly Striker"],
+      "supportCards": ["Sister Deathwhisper", "Anub'arak, Nerubian King", "Champion of the Primus", "Archlich Kel'Thuzad"],
+      "keySpells": [],
+      "priority": 4
+    },
+    {
+      "id": "quilboar_bristlemane",
+      "nameRu": "Свинобразы: Bristlemane",
+      "nameEn": "Vigilant Bristlemane Quilboar",
+      "tier": "A",
+      "race": "Quilboar",
+      "anchor": "Vigilant Bristlemane",
+      "playstyle": "Кастуем заклинания на свинобразов, чтобы скейлить (синергия с заклинаниями таверны: +1/+1 за каждое).",
+      "tags": ["Gem_Scaling", "BloodGem_Engine", "Quilboar", "Spell_Synergy"],
+      "coreCards": ["Vigilant Bristlemane"],
+      "supportCards": ["Charlga", "Pokey Thornmantle", "Bongo Bopper", "Bristlebach"],
+      "keySpells": ["Winner's Bread"],
+      "priority": 5
+    },
+    {
+      "id": "elementals_stat_scaling",
+      "nameRu": "Элементали: стат-скейл",
+      "nameEn": "Unleashed Mana Surge Elementals",
+      "tier": "A",
+      "race": "Elemental",
+      "anchor": "Unleashed Mana Surge",
+      "playstyle": "Классический скейл статов элементалей; в текущей мете силён вариант с 1-2 сверхбафнутыми Wildfire, бьющими двух врагов.",
+      "tags": ["Elemental_Play", "Elemental_Engine", "Elemental", "APM_Cycle"],
+      "coreCards": ["Unleashed Mana Surge", "Wildfire"],
+      "supportCards": ["Rock Rock", "Recycling Wraith", "Master of Realities"],
+      "keySpells": [],
+      "priority": 6
+    },
+    {
+      "id": "murlocs_venom_scam",
+      "nameRu": "Мурлоки: Venom Scam",
+      "nameEn": "Bile Spitter Murlocs",
+      "tier": "A",
+      "race": "Murloc",
+      "anchor": "Bile Spitter",
+      "playstyle": "Scam-сборка: ядовитые мурлоки + контроль позиций, чтобы размениваться с гигантами противника. Venomous теперь 1 убийство за бой — важно сохранять позиции.",
+      "tags": ["Scam_Tech", "Venomous", "Murloc"],
+      "coreCards": ["Bile Spitter"],
+      "supportCards": ["Bream Counter", "Bassgill", "Choral Mrrrglr"],
+      "keySpells": [],
+      "priority": 7
+    },
+    {
+      "id": "murlocs_apm",
+      "nameRu": "Мурлоки: APM заклинания",
+      "nameEn": "Shamanic Tidecaller Murlocs",
+      "tier": "A",
+      "race": "Murloc",
+      "anchor": "Shamanic Tidecaller",
+      "playstyle": "Играем заклинания, чтобы скейлить мурлоков; цикл заклинание → бафф → повтор.",
+      "tags": ["Handbuff_Murloc", "APM_Cycle", "Murloc", "Spell_Synergy"],
+      "coreCards": ["Shamanic Tidecaller"],
+      "supportCards": ["Bream Counter", "Choral Mrrrglr"],
+      "keySpells": [],
+      "priority": 8
+    },
+    {
+      "id": "quilboar_choose_one",
+      "nameRu": "Свинобразы: Choose One",
+      "nameEn": "Turbo Hogrider Quilboar",
+      "tier": "B",
+      "race": "Quilboar",
+      "anchor": "Turbo Hogrider",
+      "playstyle": "Карты Choose One скалируют свинобразов (каждый выбор усиливает).",
+      "tags": ["Quilboar", "Choose_One", "Gem_Scaling"],
+      "coreCards": ["Turbo Hogrider"],
+      "supportCards": [],
+      "keySpells": [],
+      "priority": 9
+    },
+    {
+      "id": "mechs_magnetics",
+      "nameRu": "Мехи: магнетика",
+      "nameEn": "Scrap Scraper Mechs",
+      "tier": "B",
+      "race": "Mech",
+      "anchor": "Scrap Scraper",
+      "playstyle": "Магнетизируем огромные статы в одного меха; поддержка заклинанием Repair Job (уточнить эффект).",
+      "tags": ["Magnetic", "Mech", "Mech_Buffer"],
+      "coreCards": ["Scrap Scraper"],
+      "supportCards": ["Utility Drone", "Beatboxer", "Deflect-o-Bot"],
+      "keySpells": ["Repair Job"],
+      "priority": 10
+    },
+    {
+      "id": "mechs_deathrattle",
+      "nameRu": "Мехи: хрипы-големы",
+      "nameEn": "Falling Sky Golem Mechs",
+      "tier": "B",
+      "race": "Mech",
+      "anchor": "Falling Sky Golem",
+      "playstyle": "Хрипы призывают огромных големов; в прошлом сезоне аналог — Volumizer-сборка (проверить пул 36.2).",
+      "tags": ["Deathrattle", "Mech_Reset", "Bomb_Mech", "Deathrattle_Trigger_x2"],
+      "coreCards": ["Falling Sky Golem"],
+      "supportCards": ["Kangor's Apprentice", "Titus Rivendare"],
+      "keySpells": [],
+      "priority": 11
+    },
+    {
+      "id": "beasts_leviathan",
+      "nameRu": "Звери: Левиафан",
+      "nameEn": "Lurking Leviathan Beasts",
+      "tier": "B",
+      "race": "Beast",
+      "anchor": "Lurking Leviathan",
+      "playstyle": "Огромные призывы с высокой атакой: Левиафан + генерация больших существ.",
+      "tags": ["Beast", "Attack_Scaling", "Token_Beasts"],
+      "coreCards": ["Lurking Leviathan"],
+      "supportCards": [],
+      "keySpells": [],
+      "priority": 12
+    },
+    {
+      "id": "pirates_bounty_apm",
+      "nameRu": "Пираты: Bounty APM",
+      "nameEn": "Sky Admiral Rogers Pirates",
+      "tier": "B",
+      "race": "Pirate",
+      "anchor": "Sky Admiral Rogers",
+      "playstyle": "Баунти генерируют золото и статы: цикл наград → APM-прокрутка.",
+      "tags": ["Pirate_Gold_Engine", "Pirate_Bounty", "APM_Cycle", "Pirate"],
+      "coreCards": ["Sky Admiral Rogers"],
+      "supportCards": ["Enterprising Escapee"],
+      "keySpells": [],
+      "priority": 13
+    },
+    {
+      "id": "nagas_groundbreaker",
+      "nameRu": "Наги: Groundbreaker",
+      "nameEn": "Groundbreaker Nagas",
+      "tier": "B",
+      "race": "Naga",
+      "anchor": "Groundbreaker",
+      "playstyle": "Заклинания и наги скалируют друг друга; Groundbreaker — финишер по заклинаниям.",
+      "tags": ["Spellcraft", "Naga", "Spell_Synergy"],
+      "coreCards": ["Groundbreaker"],
+      "supportCards": ["Deep Blue Crooner", "Zesty Shaker", "Critter Wrangler"],
+      "keySpells": [],
+      "priority": 14
+    },
+    {
+      "id": "nagas_spell_casting",
+      "nameRu": "Наги: каст заклинаний",
+      "nameEn": "Torrential Ruiner Nagas",
+      "tier": "B",
+      "race": "Naga",
+      "anchor": "Torrential Ruiner",
+      "playstyle": "Кастуем заклинания, чтобы бафать наг; Spellcraft-циклы.",
+      "tags": ["Spellcraft", "Naga", "Spell_Synergy"],
+      "coreCards": ["Torrential Ruiner"],
+      "supportCards": ["Deep Blue Crooner", "Zesty Shaker"],
+      "keySpells": [],
+      "priority": 15
+    }
+  ],
+
+  "spells": [
+    { "name": "Methodical Madness", "tier": null, "cost": null, "tags": ["Demon", "Tavern_Consume", "Keyword_Transfer"], "note": "Choose a friendly Demon. It consumes 2 random Tavern minions and gains their stats and keywords." },
+    { "name": "Mighty Dragonbreath", "tier": 4, "cost": 2, "tags": ["Dragon", "DivineShield", "Stat_Buff"], "note": "Give your minions +1/+1. Repeat for your Dragons. Repeat for your minions with Divine Shield." },
+    { "name": "Repair Job", "tier": null, "cost": null, "tags": ["Mech"], "note": "Новое заклинание 36.2; эффект уточнить (предположительно связано с мехами/магнетикой)." },
+    { "name": "Weapons Forge", "tier": null, "cost": null, "tags": ["Pirate"], "note": "Новое заклинание 36.2; эффект уточнить (предположительно оружие/пираты)." },
+    { "name": "Winner's Bread", "tier": null, "cost": null, "tags": ["Quilboar", "Stat_Buff"], "note": "Новое заклинание 36.2; эффект уточнить (используется в Quilboar Bristlemane)." }
+  ],
+
+  "customBuilds": [
+    {
+      "id": "custom_undead_darkgift_dr",
+      "nameRu": "Нежить: «Старт с хрипа» (Dark Gift)",
+      "verified": false,
+      "idea": "Dark Gift «Start of Combat: Trigger this minion's Deathrattles» на ключевом хрипе нежити = утроение хрипов без Titus. Комбинируется с Deathly Striker / Anub'arak.",
+      "tags": ["Undead", "Deathrattle", "DarkGift"],
+      "risk": "Зависит от доступности дара в окне ходов; требует теста."
+    },
+    {
+      "id": "custom_venom_fishbait",
+      "nameRu": "«Ядовитый Fishbait»",
+      "verified": false,
+      "idea": "Fishbait-миньон + Venomous: убивает ключевое существо противника в фазе найма ДО боя. Сильно против гигантских компов и триплетов.",
+      "tags": ["Venomous", "Fishbait", "Scam_Tech"],
+      "risk": "Venomous теперь срабатывает раз за бой — нужно 2+ источника или переживание боя."
+    },
+    {
+      "id": "custom_mech_fortress",
+      "nameRu": "«Мех-крепость»",
+      "verified": false,
+      "idea": "Scrap Scraper + магнетика в одного меха + Repair Job + Polarizing Beatboxer (Tier 7). Один мех с огромными статами, щитами и баффами от заклинаний.",
+      "tags": ["Mech", "Magnetic", "Tier7"],
+      "risk": "Против Venom Scam уязвим — нужен порядок атаки."
+    },
+    {
+      "id": "custom_dalaran_menagerie",
+      "nameRu": "«Солянка Даларана» (Menagerie + Tier 7)",
+      "verified": false,
+      "idea": "Highkeeper Ra (Tier 7) + тринкеты на все типы + Dark Gifts с копиями миньонов. Мульти-трибный скейл без доминации одной расы.",
+      "tags": ["Menagerie", "Tier7", "Neutral_Play", "DarkGift"],
+      "risk": "Поздняя сборка: нужно дожить до 7 тира."
+    },
+    {
+      "id": "custom_dragonbreath_shield",
+      "nameRu": "«Драконье дыхание»",
+      "verified": false,
+      "idea": "Mighty Dragonbreath на драконах с Divine Shield: повторяющийся +1/+1 (дважды: за дракона и за щит). Стейт-скейл драконов через заклинания.",
+      "tags": ["Dragon", "DivineShield", "Spell_Synergy"],
+      "risk": "Драконы не в топе меты 36.2 — сборка спекулятивная."
+    },
+    {
+      "id": "custom_activate_demon",
+      "nameRu": "«Активированные демоны»",
+      "verified": false,
+      "idea": "Activate-миньоны (трата золота в фазе найма) + Ashen Corruptor: золото конвертируется в статы демонов и поедание магазина. Гибрид APM и Shop Buff.",
+      "tags": ["Demon", "Activate", "APM_Cycle", "Tavern_Consume"],
+      "risk": "Требует высокой APM и понимания золота; уточнить, у каких демонов есть Activate."
+    }
+  ],
+
+  "tier7Minions": [
+    "Captain Sanders",
+    "Champion of Sargeras",
+    "Futurefin",
+    "Highkeeper Ra",
+    "Obsidian Ravager",
+    "Polarizing Beatboxer",
+    "Sanguine Champion",
+    "Sea Witch Zar'jira"
+  ],
+
+  "todo": [
+    "Сверить пул карт 36.2 с клиентом (541 изменение) — обновить coreCards/supportCards",
+    "Полные эффекты: Repair Job, Weapons Forge, Winner's Bread",
+    "Полный список 43 Dark Gifts с окнами ходов (36.2.1)",
+    "Полный список заклинаний таверны пула 36.2 (не только 5 новых)",
+    "Тиры (Tavern Tier) для всех anchor-карт",
+    "Стоимость апгрейда таверны 36.2 (формула под новый сезон)",
+    "Проверка пользовательских customBuilds на практике"
+  ]
+}
