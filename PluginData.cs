@@ -15,7 +15,7 @@ namespace BGSnowballEngine
         public string Description => "Советник для Полей Сражений: сборка, экономика, покупка vs апгрейд таверны.";
         public string ButtonText => "Настройки";
         public string Author => "AI & User";
-        public Version Version => new Version(1, 3, 0);
+        public Version Version => new Version(1, 3, 1);
 
         public MenuItem MenuItem => null;
 
@@ -34,10 +34,14 @@ namespace BGSnowballEngine
             _overlay = new OverlayUI();
 
             GameEvents.OnTurnStart.Add(player => AnalyzeAndDraw());
+            GameEvents.OnGameEnd.Add(HidePanel);
+            GameEvents.OnInMenu.Add(HidePanel);
         }
 
         public void OnUnload()
         {
+            GameEvents.OnGameEnd.Remove(HidePanel);
+            GameEvents.OnInMenu.Remove(HidePanel);
             _overlay?.ClearOverlay();
         }
 
@@ -50,6 +54,21 @@ namespace BGSnowballEngine
             _lastUpdateUtc = DateTime.UtcNow;
 
             AnalyzeAndDraw();
+        }
+
+        private void HidePanel()
+        {
+            // После боя / в меню панель не нужна: скрываем и сбрасываем сигнатуру,
+            // иначе интерактивная панель висит на экране результатов и в меню
+            try
+            {
+                _lastSignature = string.Empty;
+                _overlay?.SetVisible(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(ex);
+            }
         }
 
         private void AnalyzeAndDraw()
